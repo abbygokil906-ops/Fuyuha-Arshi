@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fuyuha ImageTracer - Ubah Gambar ke SVG</title>
+  <meta name="description" content="Ubah gambar PNG/JPG menjadi SVG vektor langsung di browser." />
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #171a21;
+      --border: #2a2f3a;
+      --text: #e6e8ee;
+      --muted: #8a909c;
+      --accent: #7c5cff;
+      --accent-hover: #6a49f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 24px 20px 8px;
+      text-align: center;
+    }
+    header h1 { margin: 0; font-size: 1.6rem; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 0.95rem; }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px 20px 40px;
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 300px 1fr;
+    }
+    @media (max-width: 800px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin: 14px 0 6px; }
+    label:first-child { margin-top: 0; }
+    select, input[type="range"] { width: 100%; }
+    select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 0.95rem;
+    }
+    .range-row { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--muted); }
+    .range-row strong { color: var(--text); }
+    .file-input {
+      width: 100%;
+      padding: 14px;
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      text-align: center;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .file-input:hover { border-color: var(--accent); color: var(--text); }
+    input[type="file"] { display: none; }
+    button {
+      width: 100%;
+      margin-top: 18px;
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover:not(:disabled) { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      margin-top: 10px;
+    }
+    button.secondary:hover:not(:disabled) { background: var(--bg); }
+    .preview-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 600px) {
+      .preview-grid { grid-template-columns: 1fr; }
+    }
+    .preview-box {
+      background: #fff;
+      border-radius: 10px;
+      min-height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .preview-box img, .preview-box svg {
+      max-width: 100%;
+      max-height: 480px;
+      display: block;
+    }
+    .caption {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 8px;
+      text-align: center;
+    }
+    .placeholder { color: #999; font-size: 0.9rem; padding: 20px; text-align: center; }
+    .status {
+      margin-top: 14px;
+      font-size: 0.9rem;
+      color: var(--muted);
+      min-height: 1.2em;
+    }
+    .status.error { color: #ff6b6b; }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      padding-bottom: 30px;
+    }
+    footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Fuyuha ImageTracer</h1>
+  <p>Ubah gambar PNG atau JPG menjadi SVG vektor, langsung di browser.</p>
+</header>
+
+<main>
+  <section class="panel">
+    <label for="fileInput">Gambar</label>
+    <div class="file-input" id="dropZone">Klik untuk pilih gambar<br /><small>PNG, JPG, atau WEBP</small></div>
+    <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" />
+
+    <label for="presetSelect">Preset</label>
+    <select id="presetSelect">
+      <option value="default">default</option>
+      <option value="posterized1">posterized1</option>
+      <option value="posterized2">posterized2</option>
+      <option value="posterized3">posterized3</option>
+      <option value="curvy">curvy</option>
+      <option value="sharp">sharp</option>
+      <option value="detailed">detailed</option>
+      <option value="smoothed">smoothed</option>
+      <option value="grayscale">grayscale</option>
+      <option value="fixedpalette">fixedpalette</option>
+      <option value="randomsampling1">randomsampling1</option>
+      <option value="randomsampling2">randomsampling2</option>
+      <option value="artistic1">artistic1</option>
+      <option value="artistic2">artistic2</option>
+      <option value="artistic3">artistic3</option>
+      <option value="artistic4">artistic4</option>
+    </select>
+
+    <label for="colorsRange">Jumlah warna</label>
+    <div class="range-row"><span>Warna</span><strong id="colorsValue">16</strong></div>
+    <input type="range" id="colorsRange" min="2" max="64" step="1" value="16" />
+
+    <label for="sizeSelect">Ukuran maksimum proses</label>
+    <select id="sizeSelect">
+      <option value="400">400 px (cepat)</option>
+      <option value="800" selected>800 px (seimbang)</option>
+      <option value="1200">1200 px (detail, lebih lambat)</option>
+    </select>
+
+    <button id="traceBtn" disabled>Ubah ke SVG</button>
+    <button id="downloadBtn" class="secondary" disabled>Unduh SVG</button>
+
+    <div class="status" id="status"></div>
+  </section>
+
+  <section class="panel">
+    <div class="preview-grid">
+      <div>
+        <div class="preview-box" id="originalBox">
+          <div class="placeholder">Gambar asli akan tampil di sini</div>
+        </div>
+        <div class="caption">Asli</div>
+      </div>
+      <div>
+        <div class="preview-box" id="resultBox">
+          <div class="placeholder">Hasil SVG akan tampil di sini</div>
+        </div>
+        <div class="caption" id="resultCaption">Hasil</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Berbasis <a href="https://github.com/jankovicsandras/imagetracerjs" target="_blank" rel="noopener">imagetracerjs</a> (Unlicense)
+</footer>
+
+<script src="image2svg.js"></script>
+<script>
+  (function () {
+    var fileInput = document.getElementById('fileInput');
+    var dropZone = document.getElementById('dropZone');
+    var presetSelect = document.getElementById('presetSelect');
+    var colorsRange = document.getElementById('colorsRange');
+    var colorsValue = document.getElementById('colorsValue');
+    var sizeSelect = document.getElementById('sizeSelect');
+    var traceBtn = document.getElementById('traceBtn');
+    var downloadBtn = document.getElementById('downloadBtn');
+    var originalBox = document.getElementById('originalBox');
+    var resultBox = document.getElementById('resultBox');
+    var resultCaption = document.getElementById('resultCaption');
+    var statusEl = document.getElementById('status');
+
+    var currentImage = null;   // HTMLImageElement
+    var currentName = 'hasil';
+    var lastSvg = null;
+
+    function setStatus(msg, isError) {
+      statusEl.textContent = msg || '';
+      statusEl.className = 'status' + (isError ? ' error' : '');
+    }
+
+    colorsRange.addEventListener('input', function () {
+      colorsValue.textContent = colorsRange.value;
+    });
+
+    dropZone.addEventListener('click', function () { fileInput.click(); });
+
+    dropZone.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--accent)';
+    });
+    dropZone.addEventListener('dragleave', function () {
+      dropZone.style.borderColor = '';
+    });
+    dropZone.addEventListener('drop', function (e) {
+      e.preventDefault();
+      dropZone.style.borderColor = '';
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        loadFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', function () {
+      if (fileInput.files && fileInput.files[0]) {
+        loadFile(fileInput.files[0]);
+      }
+    });
+
+    function loadFile(file) {
+      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+        setStatus('Format tidak didukung. Gunakan PNG, JPG, atau WEBP.', true);
+        return;
+      }
+      currentName = file.name.replace(/\.[^.]+$/, '') || 'hasil';
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        var img = new Image();
+        img.onload = function () {
+          currentImage = img;
+          originalBox.innerHTML = '';
+          var preview = document.createElement('img');
+          preview.src = img.src;
+          preview.alt = 'Gambar asli';
+          originalBox.appendChild(preview);
+          traceBtn.disabled = false;
+          downloadBtn.disabled = true;
+          lastSvg = null;
+          resultBox.innerHTML = '<div class="placeholder">Klik "Ubah ke SVG"</div>';
+          resultCaption.textContent = 'Hasil';
+          setStatus('Gambar dimuat. Atur opsi lalu klik "Ubah ke SVG".');
+        };
+        img.onerror = function () {
+          setStatus('Gagal membaca gambar.', true);
+        };
+        img.src = ev.target.result;
+      };
+      reader.onerror = function () { setStatus('Gagal membaca file.', true); };
+      reader.readAsDataURL(file);
+    }
+
+    // Scale the image down so the longest side is at most maxSide
+    function getImageData(img, maxSide) {
+      var w = img.naturalWidth, h = img.naturalHeight;
+      var ratio = Math.min(1, maxSide / Math.max(w, h));
+      var tw = Math.max(1, Math.round(w * ratio));
+      var th = Math.max(1, Math.round(h * ratio));
+      var canvas = document.createElement('canvas');
+      canvas.width = tw;
+      canvas.height = th;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, tw, th);
+      return ctx.getImageData(0, 0, tw, th);
+    }
+
+    traceBtn.addEventListener('click', function () {
+      if (!currentImage) return;
+      traceBtn.disabled = true;
+      downloadBtn.disabled = true;
+      setStatus('Memproses... mohon tunggu.');
+
+      // Give the browser a chance to repaint the status before heavy work
+      setTimeout(function () {
+        try {
+          if (!window.ImageTracer || !window.ImageTracer.optionpresets) {
+            throw new Error('Library imagetracer.js tidak termuat. Pastikan file imagetracer.js berada di folder yang sama dengan index.html.');
+          }
+          var maxSide = parseInt(sizeSelect.value, 10);
+          var imgd = getImageData(currentImage, maxSide);
+
+          // Build options from the chosen preset plus our color count.
+          // Copy the preset so the library's shared preset object is not mutated.
+          var preset = window.ImageTracer.optionpresets[presetSelect.value] || {};
+          var options = {};
+          for (var k in preset) {
+            if (preset.hasOwnProperty(k)) options[k] = preset[k];
+          }
+          options.numberofcolors = parseInt(colorsRange.value, 10);
+
+          var svg = window.ImageTracer.imagedataToSVG(imgd, options);
+          lastSvg = svg;
+
+          resultBox.innerHTML = svg;
+          var svgEl = resultBox.querySelector('svg');
+          if (svgEl) {
+            svgEl.removeAttribute('width');
+            svgEl.removeAttribute('height');
+            svgEl.style.width = '100%';
+            svgEl.style.height = 'auto';
+          }
+          resultCaption.textContent = 'Hasil (' + imgd.width + 'x' + imgd.height + ' px)';
+          downloadBtn.disabled = false;
+          setStatus('Selesai. Ukuran SVG: ' + (svg.length / 1024).toFixed(1) + ' KB');
+        } catch (err) {
+          console.error(err);
+          setStatus('Terjadi kesalahan: ' + (err && err.message ? err.message : err), true);
+        } finally {
+          traceBtn.disabled = false;
+        }
+      }, 30);
+    });
+
+    downloadBtn.addEventListener('click', function () {
+      if (!lastSvg) return;
+      var blob = new Blob([lastSvg], { type: 'image/svg+xml' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = currentName + '.svg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    });
+  })();
+</script>
+</body>
+</html>

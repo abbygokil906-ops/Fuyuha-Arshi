@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fuyuha Arshi - Tools</title>
+  <meta name="description" content="Kumpulan tools web dari Fuyuha Arshi." />
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #171a21;
+      --border: #2a2f3a;
+      --text: #e6e8ee;
+      --muted: #8a909c;
+      --accent: #7c5cff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header { padding: 48px 20px 16px; text-align: center; }
+    header h1 { margin: 0; font-size: 2rem; }
+    header p { margin: 8px 0 0; color: var(--muted); }
+    main {
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+    a.card {
+      display: block;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
+      color: var(--text);
+      text-decoration: none;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    a.card h2 { margin: 0 0 8px; font-size: 1.2rem; }
+    a.card p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
+    footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 0 0 30px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Fuyuha Arshi</h1>
+  <p>Pilih tools di bawah ini.</p>
+</header>
+
+<main>
+  <a class="card" href="image-vectorizer/image2svg.html">
+    <h2>Image to SVG</h2>
+    <p>Ubah gambar PNG, JPG, atau WEBP menjadi SVG vektor langsung di browser.</p>
+  </a>
+
+  <a class="card" href="svg2xml/svg2xml.html">
+    <h2>SVG to XML</h2>
+    <p>Ubah SVG menjadi Android VectorDrawable (.xml) untuk project Android.</p>
+  </a>
+</main>
+
+<footer>Fuyuha Arshi</footer>
+
+</body>
+</html>
