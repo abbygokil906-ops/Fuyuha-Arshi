@@ -11,7 +11,6 @@ export default async function handler(req, res) {
 
     if (action === 'sendOobCode') {
         endpoint = `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`;
-        
         const sessionSid = uiSid || Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         const sessionSd = uiSd || "1";
 
@@ -25,10 +24,7 @@ export default async function handler(req, res) {
         };
     } else if (action === 'signInWithEmailLink') {
         endpoint = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink?key=${FIREBASE_API_KEY}`;
-        payload = {
-            email: email,
-            oobCode: oobCode
-        };
+        payload = { email: email, oobCode: oobCode };
     } else {
         return res.status(400).json({ error: { message: 'Invalid action' } });
     }
@@ -57,7 +53,7 @@ export default async function handler(req, res) {
         let licenseResult = null;
 
         if (action === 'signInWithEmailLink' && data.idToken) {
-            const activeSid = uiSid || Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            const activeSid = uiSid || Math.random().toString(36).substring(2, 15);
             const activeSd = uiSd || "1";
             const appInstanceUuid = 'inst_' + Math.random().toString(36).substring(2, 15);
 
@@ -68,8 +64,8 @@ export default async function handler(req, res) {
                 'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 10; POCO X3 NFC Build/QKQ1.200114.002)'
             };
 
+            // TAHAP 1: userSessionBegan
             try {
-                // TAHAP 1: userSessionBegan
                 const sessionRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/userSessionBegan', {
                     method: 'POST',
                     headers: commonHeaders,
@@ -89,9 +85,13 @@ export default async function handler(req, res) {
                         }
                     })
                 });
-                if (sessionRes.ok) sessionResult = await sessionRes.json();
+                sessionResult = await sessionRes.text();
+            } catch (e) {
+                sessionResult = e.message;
+            }
 
-                // TAHAP 2: verifyPurchase (Nangkep Respon Mentah)
+            // TAHAP 2: verifyPurchase
+            try {
                 const verifyRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/verifyPurchase', {
                     method: 'POST',
                     headers: commonHeaders,
@@ -104,15 +104,13 @@ export default async function handler(req, res) {
                         }
                     })
                 });
+                verifyResult = await verifyRes.text();
+            } catch (e) {
+                verifyResult = e.message;
+            }
 
-                const verifyText = await verifyRes.text();
-                try {
-                    verifyResult = JSON.parse(verifyText);
-                } catch (e) {
-                    verifyResult = { raw_response: verifyText, status: verifyRes.status };
-                }
-
-                // TAHAP 3: getAccountStatusAndLicenses
+            // TAHAP 3: getAccountStatusAndLicenses
+            try {
                 const licenseRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/getAccountStatusAndLicenses', {
                     method: 'POST',
                     headers: commonHeaders,
@@ -123,23 +121,20 @@ export default async function handler(req, res) {
                         }
                     })
                 });
-                
-                if (licenseRes.ok) {
-                    const licData = await licenseRes.json();
-                    licenseResult = licData.result || licData;
-                } else {
-                    licenseResult = { status_code: licenseRes.status, message: await licenseRes.text() };
-                }
-            } catch (err) {
-                licenseResult = { error: err.message };
+                licenseResult = await licenseRes.text();
+            } catch (e) {
+                licenseResult = e.message;
             }
         }
 
+        // Kembalikan semua hasil mentah dalam bentuk JSON yang gampang dibaca
         return res.status(200).json({
-            ...data,
-            session: sessionResult,
-            verify: verifyResult,
-            license: licenseResult
+            auth: data,
+            debug_logs: {
+                userSessionBegan_raw: sessionResult,
+                verifyPurchase_raw: verifyResult,
+                getAccountStatus_raw: licenseResult
+            }
         });
     } catch (err) {
         return res.status(500).json({ error: { message: err.message } });
