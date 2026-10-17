@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AM Prem Verifier - Real Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-6 space-y-6">
+        <!-- Header -->
+        <div class="text-center space-y-1">
+            <span class="bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-500/20">REAL FIREBASE ENGINE</span>
+            <h1 class="text-xl font-bold tracking-tight mt-2">AM Prem Verifier</h1>
+            <p class="text-xs text-slate-400">Masukkan Email atau Paste Magic Link</p>
+        </div>
+
+        <!-- Input Form -->
+        <div class="space-y-4">
+            <div>
+                <input type="text" id="input" placeholder="Ketik email atau paste magic link di sini..." 
+                    class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200">
+            </div>
+            
+            <button id="verifyBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 rounded-lg text-sm transition-all shadow-lg shadow-emerald-900/20">
+                Proses Verifikasi
+            </button>
+        </div>
+
+        <!-- Result Area -->
+        <div class="space-y-1">
+            <div class="text-[10px] text-slate-400 px-1">amv2_result.log</div>
+            <div id="result" class="bg-black/80 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap">
+                [SYSTEM] Siap memproses input...
+            </div>
+        </div>
+    </div>
+
+    <script src="verifier.js"></script>
+</body>
+</html>
