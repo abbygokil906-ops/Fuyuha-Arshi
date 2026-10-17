@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/svg2xml", "destination": "/svg2xml/svg2xml.html" },
-    { "source": "/image-vectorizer", "destination": "/image-vectorizer/image2svg.html" }
+    { "source": "/image-vectorizer", "destination": "/image-vectorizer/image2svg.html" },
+    { "source": "/svg2am", "destination": "/svg2am/svg2am.html" }
   ]
 }

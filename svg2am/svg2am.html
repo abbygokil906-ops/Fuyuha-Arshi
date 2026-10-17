@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fuyuha SVG2XML - SVG ke Android VectorDrawable</title>
-  <meta name="description" content="Ubah SVG menjadi Android VectorDrawable XML langsung di browser." />
+  <title>Fuyuha SVG2AM - SVG ke Alight Motion</title>
+  <meta name="description" content="Ubah SVG menjadi file XML scene Alight Motion langsung di browser." />
   <style>
     :root {
       --bg: #0f1115;
@@ -42,6 +42,7 @@
       padding: 18px;
     }
     .file-input {
+      display: block;
       width: 100%;
       padding: 14px;
       border: 2px dashed var(--border);
@@ -53,6 +54,16 @@
     }
     .file-input:hover { border-color: var(--accent); color: var(--text); }
     input[type="file"] { display: none; }
+    label.field { display: block; font-size: 0.85rem; color: var(--muted); margin: 14px 0 6px; }
+    input[type="text"] {
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 0.95rem;
+    }
     button {
       width: 100%;
       margin-top: 18px;
@@ -91,16 +102,16 @@
       word-break: break-all;
       margin: 0;
     }
-    .error { color: #ff6b6b; font-size: 0.9rem; margin-top: 12px; min-height: 1.2em; }
-    #loader { display: none; color: var(--muted); font-size: 0.9rem; margin-top: 10px; }
+    .status { margin-top: 12px; font-size: 0.9rem; color: var(--muted); min-height: 1.2em; }
+    .status.error { color: #ff6b6b; }
     footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding-bottom: 30px; }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>Fuyuha SVG2XML</h1>
-  <p>Ubah SVG menjadi Android VectorDrawable (.xml).</p>
+  <h1>Fuyuha SVG2AM</h1>
+  <p>Ubah SVG menjadi file XML scene Alight Motion.</p>
 </header>
 
 <main>
@@ -108,9 +119,11 @@
     <label for="svg-input" class="file-input">Klik untuk pilih file SVG</label>
     <input type="file" id="svg-input" accept=".svg,image/svg+xml" />
 
-    <button id="convert-btn" disabled>Unduh XML</button>
-    <div id="loader">Memproses...</div>
-    <div id="error-message" class="error"></div>
+    <label class="field" for="title-input">Judul scene</label>
+    <input type="text" id="title-input" value="SVG Import" />
+
+    <button id="download-btn" disabled>Unduh XML</button>
+    <div class="status" id="status"></div>
   </section>
 
   <section class="panel">
@@ -121,8 +134,9 @@
   </section>
 </main>
 
-<footer>Fuyuha SVG2XML</footer>
+<footer>Fuyuha SVG2AM</footer>
 
-<script src="svg2xml.js"></script>
+<script src="svg2am.js"></script>
+<script src="svg2am.page.js"></script>
 </body>
 </html>
