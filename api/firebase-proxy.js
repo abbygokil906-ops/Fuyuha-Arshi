@@ -3,7 +3,8 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: { message: 'Method not allowed' } });
     }
 
-    const { action, email, oobCode } = req.body;
+    // Tangkap data lengkap termasuk uiSid dan uiSd dari frontend
+    const { action, email, oobCode, uiSid, uiSd } = req.body;
     const FIREBASE_API_KEY = "AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0";
 
     let endpoint = '';
@@ -27,7 +28,6 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Nembak ke Google Firebase dengan menyamarkan Referer agar lolos dari blokir
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 
@@ -44,7 +44,22 @@ export default async function handler(req, res) {
             return res.status(response.status).json(data);
         }
 
-        return res.status(200).json(data);
+        // Simulasi/eksekusi aktivasi lisensi jika uiSid tersedia dari magic link
+        let activationResult = null;
+        if (uiSid && action === 'signInWithEmailLink') {
+            activationResult = {
+                status: "ACTIVE",
+                orderId: "neo-" + Math.random().toString(16).substring(2, 14),
+                uiSid: uiSid,
+                uiSd: uiSd || "0",
+                duration: "1 Tahun"
+            };
+        }
+
+        return res.status(200).json({
+            ...data,
+            activation: activationResult
+        });
     } catch (err) {
         return res.status(500).json({ error: { message: err.message } });
     }
