@@ -1,13 +1,24 @@
 function extractOobCode(rawUrl) {
     try {
-        const urlObj = new URL(rawUrl);
         let targetUrl = rawUrl;
-        if (urlObj.searchParams.has('link')) {
-            targetUrl = decodeURIComponent(urlObj.searchParams.get('link'));
+        
+        // Handle format 1: Dynamic Link dibungkus firebaseapp.com?link=...
+        const initialUrlObj = new URL(rawUrl);
+        if (initialUrlObj.searchParams.has('link')) {
+            targetUrl = decodeURIComponent(initialUrlObj.searchParams.get('link'));
         }
+
+        // Handle format 2: Direct URL alightcreative.com/auth_action/?...
         const finalUrlObj = new URL(targetUrl);
-        return finalUrlObj.searchParams.get('oobCode');
+        const oobCode = finalUrlObj.searchParams.get('oobCode');
+        
+        if (oobCode) return oobCode;
+
+        // Fallback Regex jika URL Encoding agak terdistorsi
+        const match = rawUrl.match(/oobCode=([^&]+)/);
+        return match ? decodeURIComponent(match[1]) : null;
     } catch (e) {
+        // Fallback Regex darurat
         const match = rawUrl.match(/oobCode=([^&]+)/);
         return match ? decodeURIComponent(match[1]) : null;
     }
