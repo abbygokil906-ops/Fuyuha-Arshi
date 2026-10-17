@@ -1,30 +1,44 @@
-function extractLinkData(rawUrl) {
+function parseMagicLink(rawUrl) {
     try {
         let targetUrl = rawUrl;
+        
+        // Tangkap URL bungkus firebaseapp.com/__/auth/links?link=...
         const initialUrlObj = new URL(rawUrl);
         if (initialUrlObj.searchParams.has('link')) {
             targetUrl = decodeURIComponent(initialUrlObj.searchParams.get('link'));
         }
-        
+
         const finalUrlObj = new URL(targetUrl);
         const oobCode = finalUrlObj.searchParams.get('oobCode');
         const continueUrl = finalUrlObj.searchParams.get('continueUrl');
         
         let uiSid = null;
+        let uiSd = null;
+
         if (continueUrl) {
             const decodedContinue = decodeURIComponent(continueUrl);
-            const matchSid = decodedContinue.match(/ui_sid=([^&]+)/);
-            if (matchSid) uiSid = matchSid[1];
+            try {
+                const contUrlObj = new URL(decodedContinue.includes('?') ? decodedContinue : decodedContinue + '?');
+                uiSid = contUrlObj.searchParams.get('ui_sid');
+                uiSd = contUrlObj.searchParams.get('ui_sd');
+            } catch (err) {
+                const matchSid = decodedContinue.match(/ui_sid(?:%3D|=)([^&]+)/);
+                const matchSd = decodedContinue.match(/ui_sd(?:%3D|=)([^&]+)/);
+                if (matchSid) uiSid = decodeURIComponent(matchSid[1]);
+                if (matchSd) uiSd = decodeURIComponent(matchSd[1]);
+            }
         }
 
         return {
             oobCode: oobCode || getRegexParam(rawUrl, 'oobCode'),
-            uiSid: uiSid || getRegexParam(rawUrl, 'ui_sid')
+            uiSid: uiSid,
+            uiSd: uiSd
         };
     } catch (e) {
         return {
             oobCode: getRegexParam(rawUrl, 'oobCode'),
-            uiSid: getRegexParam(rawUrl, 'ui_sid')
+            uiSid: null,
+            uiSd: null
         };
     }
 }
@@ -88,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const linkData = extractLinkData(fullLink);
+        const linkData = parseMagicLink(fullLink);
         if (!linkData.oobCode) {
             log('Error: Gagal nge-extract oobCode dari link tersebut.', true);
             return;
@@ -98,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         verifyBtn.disabled = true;
         verifyBtn.textContent = 'Memverifikasi...';
-        log('[API] Menukar oobCode & menyertakan sesi web...', false);
+        log('[API] Menukar oobCode & menyertakan parameter aktivasi...', false);
 
         try {
             const response = await fetch('/api/firebase-proxy', {
@@ -108,7 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     action: 'signInWithEmailLink', 
                     email: savedEmail, 
                     oobCode: linkData.oobCode,
-                    uiSid: linkData.uiSid 
+                    uiSid: linkData.uiSid,
+                    uiSd: linkData.uiSd
                 })
             });
 
@@ -117,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(data.error ? JSON.stringify(data.error) : response.statusText);
             }
 
-            log(`[SUCCESS] Sesi & Aktivasi Berhasil!\nUID: ${data.localId}\nUI_SID: ${linkData.uiSid || 'N/A'}\nToken: ${data.idToken.substring(0, 25)}...`, false);
+            log(`[SUCCESS] Sesi & Aktivasi Berhasil!\nUID: ${data.localId}\nUI_SID: ${linkData.uiSid || 'N/A'}\nUI_SD: ${linkData.uiSd || 'N/A'}\nToken: ${data.idToken.substring(0, 25)}...`, false);
             console.log("Full Auth Data:", data);
         } catch (err) {
             log(`[FIREBASE ERROR] ${err.message}`, true);
