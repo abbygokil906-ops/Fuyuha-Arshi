@@ -3,21 +3,25 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: { message: 'Method not allowed' } });
     }
 
-    const { action, email, oobCode, uiSid, uiSd } = req.body;
+    const { action, email, oobCode, uiSid, uiSd } = req.body || {};
     const FIREBASE_API_KEY = "AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0";
+
+    // Pastikan uiSid dan uiSd selalu string aman
+    const safeSid = (typeof uiSid === 'string' && uiSid.trim() !== '') 
+        ? uiSid 
+        : (Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
+    
+    const safeSd = (typeof uiSd === 'string' && uiSd.trim() !== '') ? uiSd : "1";
 
     let endpoint = '';
     let payload = {};
 
     if (action === 'sendOobCode') {
         endpoint = `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`;
-        const sessionSid = uiSid || Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        const sessionSd = uiSd || "1";
-
         payload = {
             requestType: "EMAIL_SIGNIN",
             email: email,
-            continueUrl: `https://alightcreative.com/auth_action?ui_sid=${sessionSid}&ui_sd=${sessionSd}`,
+            continueUrl: `https://alightcreative.com/auth_action?ui_sid=${safeSid}&ui_sd=${safeSd}`,
             canHandleCodeInApp: true,
             androidPackageName: "com.alightcreative.motion",
             androidInstallApp: false
@@ -53,8 +57,6 @@ export default async function handler(req, res) {
         let licenseResult = null;
 
         if (action === 'signInWithEmailLink' && data.idToken) {
-            const activeSid = uiSid || Math.random().toString(36).substring(2, 15);
-            const activeSd = uiSd || "1";
             const appInstanceUuid = 'inst_' + Math.random().toString(36).substring(2, 15);
 
             const commonHeaders = {
@@ -80,8 +82,8 @@ export default async function handler(req, res) {
                             appDay: Date.now(),
                             expectedAccountVersion: 1,
                             acctTestMode: "false",
-                            ui_sid: activeSid,
-                            ui_sd: activeSd
+                            ui_sid: safeSid,
+                            ui_sd: safeSd
                         }
                     })
                 });
@@ -98,7 +100,7 @@ export default async function handler(req, res) {
                     body: JSON.stringify({
                         data: {
                             productId: "alightmotion_sub_yearly_1_year",
-                            token: "mock_google_play_purchase_token_" + Math.random().toString(36).substring(2),
+                            token: "mock_google_play_purchase_token_" + Math.random().toString(36).substring(2, 12),
                             skuType: "subs",
                             orderId: "GPA.3333-4444-5555-" + Math.floor(10000 + Math.random() * 90000)
                         }
@@ -116,8 +118,8 @@ export default async function handler(req, res) {
                     headers: commonHeaders,
                     body: JSON.stringify({
                         data: {
-                            ui_sid: activeSid,
-                            ui_sd: activeSd
+                            ui_sid: safeSid,
+                            ui_sd: safeSd
                         }
                     })
                 });
@@ -127,7 +129,6 @@ export default async function handler(req, res) {
             }
         }
 
-        // Kembalikan semua hasil mentah dalam bentuk JSON yang gampang dibaca
         return res.status(200).json({
             auth: data,
             debug_logs: {
