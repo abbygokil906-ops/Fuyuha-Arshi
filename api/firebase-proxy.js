@@ -6,7 +6,6 @@ export default async function handler(req, res) {
     const { action, email, oobCode, uiSid, uiSd } = req.body || {};
     const FIREBASE_API_KEY = "AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0";
 
-    // Pastikan uiSid dan uiSd selalu string aman
     const safeSid = (typeof uiSid === 'string' && uiSid.trim() !== '') 
         ? uiSid 
         : (Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
@@ -46,29 +45,30 @@ export default async function handler(req, res) {
             body: JSON.stringify(payload)
         });
 
-        const data = await response.json();
+        const authData = await response.json();
 
         if (!response.ok) {
-            return res.status(response.status).json(data);
+            return res.status(response.status).json({ step: "firebase_auth", error: authData });
         }
 
-        let sessionResult = null;
-        let verifyResult = null;
-        let licenseResult = null;
+        let logs = {
+            userSessionBegan: null,
+            verifyPurchase: null,
+            getAccountStatus: null
+        };
 
-        if (action === 'signInWithEmailLink' && data.idToken) {
+        if (action === 'signInWithEmailLink' && authData.idToken) {
             const appInstanceUuid = 'inst_' + Math.random().toString(36).substring(2, 15);
-
             const commonHeaders = {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${data.idToken}`,
+                'Authorization': `Bearer ${authData.idToken}`,
                 'X-Android-Package': 'com.alightcreative.motion',
                 'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 10; POCO X3 NFC Build/QKQ1.200114.002)'
             };
 
-            // TAHAP 1: userSessionBegan
+            // 1. userSessionBegan
             try {
-                const sessionRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/userSessionBegan', {
+                const res1 = await fetch('https://us-central1-alight-creative.cloudfunctions.net/userSessionBegan', {
                     method: 'POST',
                     headers: commonHeaders,
                     body: JSON.stringify({
@@ -87,14 +87,18 @@ export default async function handler(req, res) {
                         }
                     })
                 });
-                sessionResult = await sessionRes.text();
-            } catch (e) {
-                sessionResult = e.message;
+                logs.userSessionBegan = {
+                    status: res1.status,
+                    statusText: res1.statusText,
+                    body: await res1.text()
+                };
+            } catch (err) {
+                logs.userSessionBegan = { error: err.message };
             }
 
-            // TAHAP 2: verifyPurchase
+            // 2. verifyPurchase
             try {
-                const verifyRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/verifyPurchase', {
+                const res2 = await fetch('https://us-central1-alight-creative.cloudfunctions.net/verifyPurchase', {
                     method: 'POST',
                     headers: commonHeaders,
                     body: JSON.stringify({
@@ -106,14 +110,18 @@ export default async function handler(req, res) {
                         }
                     })
                 });
-                verifyResult = await verifyRes.text();
-            } catch (e) {
-                verifyResult = e.message;
+                logs.verifyPurchase = {
+                    status: res2.status,
+                    statusText: res2.statusText,
+                    body: await res2.text()
+                };
+            } catch (err) {
+                logs.verifyPurchase = { error: err.message };
             }
 
-            // TAHAP 3: getAccountStatusAndLicenses
+            // 3. getAccountStatusAndLicenses
             try {
-                const licenseRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/getAccountStatusAndLicenses', {
+                const res3 = await fetch('https://us-central1-alight-creative.cloudfunctions.net/getAccountStatusAndLicenses', {
                     method: 'POST',
                     headers: commonHeaders,
                     body: JSON.stringify({
@@ -123,21 +131,23 @@ export default async function handler(req, res) {
                         }
                     })
                 });
-                licenseResult = await licenseRes.text();
-            } catch (e) {
-                licenseResult = e.message;
+                logs.getAccountStatus = {
+                    status: res3.status,
+                    statusText: res3.statusText,
+                    body: await res3.text()
+                };
+            } catch (err) {
+                logs.getAccountStatus = { error: err.message };
             }
         }
 
         return res.status(200).json({
-            auth: data,
-            debug_logs: {
-                userSessionBegan_raw: sessionResult,
-                verifyPurchase_raw: verifyResult,
-                getAccountStatus_raw: licenseResult
-            }
+            success: true,
+            auth_token_preview: authData.idToken ? authData.idToken.substring(0, 20) + "..." : null,
+            full_debug_logs: logs
         });
+
     } catch (err) {
-        return res.status(500).json({ error: { message: err.message } });
+        return res.status(500).json({ fatal_error: err.message });
     }
 }
