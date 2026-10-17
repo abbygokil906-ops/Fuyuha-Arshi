@@ -13,18 +13,73 @@ function extractOobCode(rawUrl) {
     }
 }
 
-async function verify(value) {
-    value = value.trim();
-    if (!value) {
-        return { ok: false, message: "Input tidak boleh kosong, cuy!" };
+document.addEventListener('DOMContentLoaded', () => {
+    const emailInput = document.getElementById('emailInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const linkInput = document.getElementById('linkInput');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const resultEl = document.getElementById('result');
+    const copyLogBtn = document.getElementById('copyLogBtn');
+
+    function log(msg, isError = false) {
+        resultEl.className = `bg-black/80 border rounded-lg p-3 text-xs font-mono min-h-[80px] max-h-36 overflow-y-auto whitespace-pre-wrap select-all ${isError ? 'border-rose-500/40 text-rose-400' : 'border-emerald-500/40 text-emerald-400'}`;
+        resultEl.textContent = msg;
     }
 
-    const oobCode = extractOobCode(value);
+    // Tombol Kirim Email
+    sendBtn.addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        if (!email) {
+            log('Error: Masukkan email dulu, cuy!', true);
+            return;
+        }
 
-    // KONDISI 1: Magic Link
-    if (oobCode) {
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Mengirim...';
+        log('[API] Mengirim request sendOobCode...', false);
+
+        try {
+            const response = await fetch('/api/firebase-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'sendOobCode', email: email })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error ? JSON.stringify(data.error) : response.statusText);
+            }
+
+            localStorage.setItem('am_target_email', email);
+            log(`[SUCCESS] Magic link berhasil dikirim ke ${email}! Silakan cek inbox/spam.`, false);
+        } catch (err) {
+            log(`[FIREBASE ERROR] ${err.message}`, true);
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Kirim Magic Link';
+        }
+    });
+
+    // Tombol Verifikasi Link
+    verifyBtn.addEventListener('click', async () => {
+        const fullLink = linkInput.value.trim();
+        if (!fullLink) {
+            log('Error: Paste link dari email dulu di kotak nomor 2!', true);
+            return;
+        }
+
+        const oobCode = extractOobCode(fullLink);
+        if (!oobCode) {
+            log('Error: Gagal nge-extract oobCode dari link tersebut.', true);
+            return;
+        }
+
         const savedEmail = localStorage.getItem('am_target_email') || "";
-        
+
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = 'Memverifikasi...';
+        log('[API] Menukar oobCode dengan token sesi...', false);
+
         try {
             const response = await fetch('/api/firebase-proxy', {
                 method: 'POST',
@@ -38,80 +93,20 @@ async function verify(value) {
 
             const data = await response.json();
             if (!response.ok) {
-                const errDetail = data.error ? JSON.stringify(data.error) : response.statusText;
-                return { ok: false, message: `[FIREBASE ERROR] ${errDetail}` };
+                throw new Error(data.error ? JSON.stringify(data.error) : response.statusText);
             }
 
-            return { 
-                ok: true, 
-                message: `[SUCCESS] Sesi Berhasil Diambil!\nUID: ${data.localId}\nToken: ${data.idToken.substring(0, 25)}...` 
-            };
+            log(`[SUCCESS] Sesi Berhasil Diambil!\nUID: ${data.localId}\nToken: ${data.idToken.substring(0, 25)}...`, false);
+            console.log("Full Auth Data:", data);
         } catch (err) {
-            return { ok: false, message: `[NETWORK ERROR] ${err.message}` };
+            log(`[FIREBASE ERROR] ${err.message}`, true);
+        } finally {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Verifikasi & Ambil Sesi';
         }
-    } 
-    // KONDISI 2: Email
-    else if (value.includes('@')) {
-        localStorage.setItem('am_target_email', value);
-
-        try {
-            const response = await fetch('/api/firebase-proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    action: 'sendOobCode', 
-                    email: value 
-                })
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                const errDetail = data.error ? JSON.stringify(data.error) : response.statusText;
-                return { ok: false, message: `[FIREBASE ERROR] ${errDetail}` };
-            }
-
-            return { 
-                ok: true, 
-                message: `[SUCCESS] Magic link berhasil dikirim ke ${value}!\nSilakan cek inbox/spam email, lalu paste link-nya ke sini.` 
-            };
-        } catch (err) {
-            return { ok: false, message: `[NETWORK ERROR] ${err.message}` };
-        }
-    } 
-    // KONDISI 3: Format Tidak Dikenal
-    else {
-        return { ok: false, message: "[ERROR] Format tidak dikenal. Masukkan email valid atau paste magic link secara utuh." };
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    const inputEl = document.getElementById('input');
-    const verifyBtn = document.getElementById('verifyBtn');
-    const resultEl = document.getElementById('result');
-    const copyLogBtn = document.getElementById('copyLogBtn');
-
-    if (!inputEl || !verifyBtn || !resultEl) return;
-
-    verifyBtn.addEventListener('click', async () => {
-        const val = inputEl.value;
-        verifyBtn.disabled = true;
-        verifyBtn.textContent = 'Memproses...';
-        resultEl.textContent = '[LOADING] Menghubungkan ke server Firebase...';
-        resultEl.className = 'bg-black/80 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap select-all';
-
-        const res = await verify(val);
-
-        verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Proses Verifikasi';
-
-        if (res.ok) {
-            resultEl.className = 'bg-black/80 border border-emerald-500/40 rounded-lg p-3 text-xs font-mono text-emerald-400 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap select-all';
-        } else {
-            resultEl.className = 'bg-black/80 border border-rose-500/40 rounded-lg p-3 text-xs font-mono text-rose-400 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap select-all';
-        }
-        resultEl.textContent = res.message;
     });
 
+    // Tombol Salin Log
     if (copyLogBtn) {
         copyLogBtn.addEventListener('click', async () => {
             const textToCopy = resultEl.textContent;
@@ -122,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const originalText = copyLogBtn.textContent;
                 copyLogBtn.textContent = 'Copied!';
                 copyLogBtn.classList.add('text-emerald-400');
-                
                 setTimeout(() => {
                     copyLogBtn.textContent = originalText;
                     copyLogBtn.classList.remove('text-emerald-400');

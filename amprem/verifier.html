@@ -3,39 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AM Prem Verifier - Real Engine</title>
+    <title>AM Prem Verifier</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
 
     <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-6 space-y-6">
-        <!-- Header -->
         <div class="text-center space-y-1">
             <span class="bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-500/20">REAL FIREBASE ENGINE</span>
             <h1 class="text-xl font-bold tracking-tight mt-2">AM Prem Verifier</h1>
-            <p class="text-xs text-slate-400">Masukkan Email atau Paste Magic Link</p>
+            <p class="text-xs text-slate-400">Kirim email atau langsung verifikasi link</p>
         </div>
 
-        <!-- Input Form -->
-        <div class="space-y-4">
-            <div>
-                <input type="text" id="input" placeholder="Ketik email atau paste magic link di sini..." 
-                    class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200">
-            </div>
-            
-            <button id="verifyBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 rounded-lg text-sm transition-all shadow-lg shadow-emerald-900/20">
-                Proses Verifikasi
+        <!-- Bagian 1: Kirim Email -->
+        <div class="space-y-3 bg-slate-950/50 border border-slate-800/80 p-4 rounded-xl">
+            <h2 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">1. Kirim Magic Link ke Email</h2>
+            <input type="email" id="emailInput" placeholder="nama@email.com" 
+                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 text-slate-200">
+            <button id="sendBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 rounded-lg text-sm transition-all shadow-lg shadow-emerald-900/20">
+                Kirim Magic Link
             </button>
         </div>
 
-        <!-- Result Area with Copy Feature -->
+        <!-- Bagian 2: Paste Link yang Didapat -->
+        <div class="space-y-3 bg-slate-950/50 border border-slate-800/80 p-4 rounded-xl">
+            <h2 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">2. Verifikasi Magic Link</h2>
+            <input type="text" id="linkInput" placeholder="Paste link dari email di sini..." 
+                class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-sky-500 text-slate-200">
+            <button id="verifyBtn" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-medium py-2 rounded-lg text-sm transition-all shadow-lg shadow-sky-900/20">
+                Verifikasi & Ambil Sesi
+            </button>
+        </div>
+
+        <!-- Result & Log -->
         <div class="space-y-1">
             <div class="flex justify-between items-center text-[10px] text-slate-400 px-1">
                 <span>amv2_result.log</span>
                 <button id="copyLogBtn" class="hover:text-emerald-400 transition-colors font-medium">Salin Log</button>
             </div>
-            <div id="result" class="bg-black/80 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap select-all">
-                [SYSTEM] Siap memproses input...
+            <div id="result" class="bg-black/80 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 min-h-[80px] max-h-36 overflow-y-auto whitespace-pre-wrap select-all">
+                [SYSTEM] Siap memproses...
             </div>
         </div>
     </div>
