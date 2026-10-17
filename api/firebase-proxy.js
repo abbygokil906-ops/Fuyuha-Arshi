@@ -52,11 +52,12 @@ export default async function handler(req, res) {
             return res.status(response.status).json(data);
         }
 
-        let licenseResult = null;
         let sessionResult = null;
+        let verifyResult = null;
+        let licenseResult = null;
 
         if (action === 'signInWithEmailLink' && data.idToken) {
-            const activeSid = uiSid || Math.random().toString(36).substring(2, 15);
+            const activeSid = uiSid || Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
             const activeSd = uiSd || "1";
             const appInstanceUuid = 'inst_' + Math.random().toString(36).substring(2, 15);
 
@@ -68,7 +69,7 @@ export default async function handler(req, res) {
             };
 
             try {
-                // TAHAP 1: Registrasi Sesi via userSessionBegan (Membawa payload lengkap UserSessionBeginRequest)
+                // TAHAP 1: userSessionBegan
                 const sessionRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/userSessionBegan', {
                     method: 'POST',
                     headers: commonHeaders,
@@ -88,12 +89,30 @@ export default async function handler(req, res) {
                         }
                     })
                 });
+                if (sessionRes.ok) sessionResult = await sessionRes.json();
+
+                // TAHAP 2: verifyPurchase (Suntik Resi Mock berdasarkan VerifyPurchaseRequest)
+                const verifyRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/verifyPurchase', {
+                    method: 'POST',
+                    headers: commonHeaders,
+                    body: JSON.stringify({
+                        data: {
+                            productId: "alightmotion_sub_yearly_1_year",
+                            token: "mock_google_play_purchase_token_" + Math.random().toString(36).substring(2),
+                            skuType: "subs",
+                            orderId: "GPA.3333-4444-5555-" + Math.floor(10000 + Math.random() * 90000)
+                        }
+                    })
+                });
                 
-                if (sessionRes.ok) {
-                    sessionResult = await sessionRes.json();
+                if (verifyRes.ok) {
+                    const vData = await verifyRes.json();
+                    verifyResult = vData.result || vData;
+                } else {
+                    verifyResult = { status_code: verifyRes.status, message: await verifyRes.text() };
                 }
 
-                // TAHAP 2: Ambil Status & Lisensi Akun
+                // TAHAP 3: getAccountStatusAndLicenses (Memastikan status berubah)
                 const licenseRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/getAccountStatusAndLicenses', {
                     method: 'POST',
                     headers: commonHeaders,
@@ -119,6 +138,7 @@ export default async function handler(req, res) {
         return res.status(200).json({
             ...data,
             session: sessionResult,
+            verify: verifyResult,
             license: licenseResult
         });
     } catch (err) {
