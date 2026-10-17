@@ -48,7 +48,7 @@ export default async function handler(req, res) {
         const authData = await response.json();
 
         if (!response.ok) {
-            return res.status(response.status).json({ step: "firebase_auth", error: authData });
+            return res.status(response.status).json({ error: authData });
         }
 
         let logs = {
@@ -89,7 +89,6 @@ export default async function handler(req, res) {
                 });
                 logs.userSessionBegan = {
                     status: res1.status,
-                    statusText: res1.statusText,
                     body: await res1.text()
                 };
             } catch (err) {
@@ -112,7 +111,6 @@ export default async function handler(req, res) {
                 });
                 logs.verifyPurchase = {
                     status: res2.status,
-                    statusText: res2.statusText,
                     body: await res2.text()
                 };
             } catch (err) {
@@ -133,7 +131,6 @@ export default async function handler(req, res) {
                 });
                 logs.getAccountStatus = {
                     status: res3.status,
-                    statusText: res3.statusText,
                     body: await res3.text()
                 };
             } catch (err) {
@@ -141,13 +138,13 @@ export default async function handler(req, res) {
             }
         }
 
+        // Kembalikan format asli Firebase Auth agar verifier.js tidak error, plus sisipkan debug_logs
         return res.status(200).json({
-            success: true,
-            auth_token_preview: authData.idToken ? authData.idToken.substring(0, 20) + "..." : null,
-            full_debug_logs: logs
+            ...authData,
+            debug_logs: logs
         });
 
     } catch (err) {
-        return res.status(500).json({ fatal_error: err.message });
+        return res.status(500).json({ error: { message: err.message } });
     }
 }
