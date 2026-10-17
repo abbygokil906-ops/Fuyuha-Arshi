@@ -49,7 +49,87 @@
       pointer-events: none;
     }
 
-    /* ---------- Header ---------- */
+    /* ---------- Splash (HTML + CSS, tanpa video) ---------- */
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: radial-gradient(circle at 50% 42%, #1d1747 0%, #0a0b0f 65%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      transition: opacity 0.7s ease;
+      overflow: hidden;
+    }
+    #splash.out { opacity: 0; pointer-events: none; }
+    .sp-halo {
+      position: absolute;
+      width: 420px;
+      height: 420px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124,92,255,0.45), transparent 70%);
+      filter: blur(30px);
+      animation: halo 3.5s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .sp-content { position: relative; display: grid; gap: 14px; justify-items: center; }
+    .sp-welcome {
+      margin: 0;
+      font-size: 0.9rem;
+      letter-spacing: 0.4em;
+      color: #c8cddb;
+      animation: spIn 0.9s 0.3s both;
+    }
+    .sp-title {
+      margin: 0;
+      font-size: clamp(2.2rem, 10vw, 3.4rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+    }
+    .sp-title span { display: inline-block; animation: spPop 0.9s both; }
+    .sp-title .w1 { animation-delay: 0.9s; color: #fff; }
+    .sp-title .w2 { animation-delay: 1.1s; color: var(--accent); }
+    .sp-sub {
+      margin: 0;
+      font-size: 1rem;
+      color: #e0e4ef;
+      animation: spIn 0.9s 2.4s both;
+    }
+    .sp-tag {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      animation: spIn 0.9s 2.9s both;
+    }
+    .sp-line {
+      width: 0;
+      height: 3px;
+      border-radius: 3px;
+      background: var(--accent2);
+      margin-top: 8px;
+      animation: grow 0.8s 3.3s forwards;
+    }
+    #skipSplash {
+      position: absolute;
+      right: 18px;
+      bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+      padding: 9px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(0,0,0,0.4);
+      color: #fff;
+      font-size: 0.85rem;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    /* ---------- Beranda ---------- */
     header {
       padding: 56px 20px 12px;
       text-align: center;
@@ -67,13 +147,8 @@
       color: transparent;
       animation: shine 6s linear infinite;
     }
-    header p {
-      margin: 10px 0 0;
-      color: var(--muted);
-      font-size: 0.98rem;
-    }
+    header p { margin: 10px 0 0; color: var(--muted); font-size: 0.98rem; }
 
-    /* ---------- Cards ---------- */
     main {
       max-width: 920px;
       width: 100%;
@@ -118,13 +193,7 @@
       box-shadow: 0 12px 36px rgba(124,92,255,0.25);
     }
     a.card:hover::before { opacity: 1; }
-    a.card h2 {
-      margin: 0 0 8px;
-      font-size: 1.2rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    a.card h2 { margin: 0 0 8px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
     a.card h2::after {
       content: "→";
       margin-left: auto;
@@ -133,12 +202,7 @@
       transition: opacity 0.25s ease, transform 0.25s ease;
     }
     a.card:hover h2::after { opacity: 1; transform: translateX(0); }
-    a.card p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.92rem;
-      line-height: 1.55;
-    }
+    a.card p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.55; }
 
     footer {
       text-align: center;
@@ -148,50 +212,24 @@
       animation: fadeIn 1s ease 0.6s both;
     }
 
-    /* ---------- Splash ---------- */
-    #splash {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      background: #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: opacity 0.7s ease;
-    }
-    #splash.out { opacity: 0; pointer-events: none; }
-    #splashVideo {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    #skipSplash {
-      position: absolute;
-      right: 18px;
-      bottom: calc(18px + env(safe-area-inset-bottom, 0px));
-      padding: 9px 16px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.3);
-      background: rgba(0,0,0,0.4);
-      color: #fff;
-      font-size: 0.85rem;
-      cursor: pointer;
-      backdrop-filter: blur(6px);
-    }
-
     /* ---------- Keyframes ---------- */
+    @keyframes spIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    @keyframes spPop { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
+    @keyframes grow { to { width: 180px; } }
+    @keyframes halo {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 1; }
+    }
     @keyframes shine { to { background-position: 300% 0; } }
     @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
     @keyframes fadeDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* ---------- Reduced motion ---------- */
+    /* ---------- Kurangi gerakan ---------- */
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation: none !important;
-        transition: none !important;
-      }
+      *, *::before, *::after { animation: none !important; transition: none !important; }
       #bgVideo { display: none; }
+      #splash { display: none; }
     }
   </style>
 </head>
@@ -202,10 +240,15 @@
 </video>
 <div class="bg-shade" aria-hidden="true"></div>
 
-<div id="splash">
-  <video id="splashVideo" muted playsinline preload="auto">
-    <source src="assets/splash.mp4" type="video/mp4" />
-  </video>
+<div id="splash" role="dialog" aria-label="Pembuka">
+  <div class="sp-halo" aria-hidden="true"></div>
+  <div class="sp-content">
+    <p class="sp-welcome">WELCOME</p>
+    <h2 class="sp-title"><span class="w1">Fuyuha</span> <span class="w2">Arshi</span></h2>
+    <p class="sp-sub">Selamat datang di tools kami</p>
+    <p class="sp-tag">Image • SVG • Alight Motion • Verifier</p>
+    <div class="sp-line" aria-hidden="true"></div>
+  </div>
   <button id="skipSplash" type="button">Lewati</button>
 </div>
 
@@ -238,7 +281,6 @@
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var bg = document.getElementById('bgVideo');
   var splash = document.getElementById('splash');
-  var splashVideo = document.getElementById('splashVideo');
   var skip = document.getElementById('skipSplash');
 
   // Video latar: kalau gagal dimuat, latar gradien tetap tampil
@@ -247,32 +289,34 @@
       bg.remove();
     } else {
       bg.addEventListener('error', function () { bg.remove(); }, true);
-      var p = bg.play(); if (p && p.catch) p.catch(function () { bg.remove(); });
+      var p = bg.play();
+      if (p && p.catch) p.catch(function () { bg.remove(); });
     }
   }
 
-  // Splash: tampil sekali per sesi browser
+  // Splash HTML: tampil sekali per sesi browser
   if (!splash) return;
   var seen = false;
   try { seen = sessionStorage.getItem('splashSeen') === '1'; } catch (e) {}
   if (seen || reduce) { splash.remove(); return; }
 
-  var closed = false;
-  function closeSplash() {
-    if (closed) return;
-    closed = true;
+  var fading = false, removed = false;
+  function fadeOut() {
+    if (fading) return;
+    fading = true;
     try { sessionStorage.setItem('splashSeen', '1'); } catch (e) {}
     splash.classList.add('out');
-    setTimeout(function () { splash.remove(); }, 800);
+    setTimeout(removeSplash, 800);
+  }
+  function removeSplash() {
+    if (removed) return;
+    removed = true;
+    splash.remove();
   }
 
-  splashVideo.addEventListener('ended', closeSplash);
-  splashVideo.addEventListener('error', closeSplash);
-  skip.addEventListener('click', closeSplash);
-  setTimeout(closeSplash, 8000); // batas aman kalau video macet
-
-  var sp = splashVideo.play();
-  if (sp && sp.catch) sp.catch(closeSplash);
+  skip.addEventListener('click', fadeOut);
+  setTimeout(fadeOut, 4300);   // mulai memudar setelah animasi selesai
+  setTimeout(removeSplash, 5200); // batas aman
 
   // Efek sorot mengikuti kursor di kartu
   document.querySelectorAll('a.card').forEach(function (card) {
