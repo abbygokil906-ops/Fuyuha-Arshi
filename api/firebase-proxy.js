@@ -91,7 +91,7 @@ export default async function handler(req, res) {
                 });
                 if (sessionRes.ok) sessionResult = await sessionRes.json();
 
-                // TAHAP 2: verifyPurchase (Suntik Resi Mock berdasarkan VerifyPurchaseRequest)
+                // TAHAP 2: verifyPurchase (Nangkep Respon Mentah)
                 const verifyRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/verifyPurchase', {
                     method: 'POST',
                     headers: commonHeaders,
@@ -104,15 +104,15 @@ export default async function handler(req, res) {
                         }
                     })
                 });
-                
-                if (verifyRes.ok) {
-                    const vData = await verifyRes.json();
-                    verifyResult = vData.result || vData;
-                } else {
-                    verifyResult = { status_code: verifyRes.status, message: await verifyRes.text() };
+
+                const verifyText = await verifyRes.text();
+                try {
+                    verifyResult = JSON.parse(verifyText);
+                } catch (e) {
+                    verifyResult = { raw_response: verifyText, status: verifyRes.status };
                 }
 
-                // TAHAP 3: getAccountStatusAndLicenses (Memastikan status berubah)
+                // TAHAP 3: getAccountStatusAndLicenses
                 const licenseRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/getAccountStatusAndLicenses', {
                     method: 'POST',
                     headers: commonHeaders,
