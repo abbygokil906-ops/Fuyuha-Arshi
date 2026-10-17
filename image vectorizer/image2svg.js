@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fuyuha SVG2AM - SVG ke Alight Motion</title>
+  <meta name="description" content="Ubah SVG menjadi file XML scene Alight Motion langsung di browser." />
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #171a21;
+      --border: #2a2f3a;
+      --text: #e6e8ee;
+      --muted: #8a909c;
+      --accent: #7c5cff;
+      --accent-hover: #6a49f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header { padding: 24px 20px 8px; text-align: center; }
+    header h1 { margin: 0; font-size: 1.6rem; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 0.95rem; }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px 20px 40px;
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 300px 1fr;
+    }
+    @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .file-input {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      text-align: center;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .file-input:hover { border-color: var(--accent); color: var(--text); }
+    input[type="file"] { display: none; }
+    label.field { display: block; font-size: 0.85rem; color: var(--muted); margin: 14px 0 6px; }
+    input[type="text"] {
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 0.95rem;
+    }
+    button {
+      width: 100%;
+      margin-top: 18px;
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover:not(:disabled) { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .preview-box {
+      background: #fff;
+      border-radius: 10px;
+      min-height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .preview-box svg { max-width: 100%; max-height: 420px; height: auto; }
+    .placeholder { color: #999; font-size: 0.9rem; padding: 20px; text-align: center; }
+    pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 320px;
+      overflow: auto;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin: 0;
+    }
+    .status { margin-top: 12px; font-size: 0.9rem; color: var(--muted); min-height: 1.2em; }
+    .status.error { color: #ff6b6b; }
+    footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding-bottom: 30px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Fuyuha SVG2AM</h1>
+  <p>Ubah SVG menjadi file XML scene Alight Motion.</p>
+</header>
+
+<main>
+  <section class="panel">
+    <label for="svg-input" class="file-input">Klik untuk pilih file SVG</label>
+    <input type="file" id="svg-input" accept=".svg,image/svg+xml" />
+
+    <label class="field" for="title-input">Judul scene</label>
+    <input type="text" id="title-input" value="SVG Import" />
+
+    <button id="download-btn" disabled>Unduh XML</button>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section class="panel">
+    <div class="preview-box" id="svg-container">
+      <div class="placeholder">Pratinjau SVG akan tampil di sini</div>
+    </div>
+    <pre id="xml-output">Hasil XML akan tampil di sini</pre>
+  </section>
+</main>
+
+<footer>Fuyuha SVG2AM</footer>
+
+<script src="svg2am.js"></script>
+<script src="svg2am.page.js"></script>
+<script src="/maintenance.js"></script>
+</body>
+</html>

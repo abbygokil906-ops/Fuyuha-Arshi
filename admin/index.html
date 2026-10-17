@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Admin - Fuyuha Arshi</title>
+  <style>
+    :root { --bg:#0f1115; --panel:#171a21; --border:#2a2f3a; --text:#e6e8ee; --muted:#8a909c; --accent:#7c5cff; --danger:#ff6b6b; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--text); }
+    header { padding:20px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); }
+    header h1 { margin:0; font-size:1.2rem; }
+    main { max-width:900px; margin:0 auto; padding:20px; display:grid; gap:18px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:18px; }
+    h2 { margin:0 0 12px; font-size:1rem; }
+    label { display:block; font-size:0.85rem; color:var(--muted); margin:10px 0 6px; }
+    input[type="text"], input[type="password"], textarea, select {
+      width:100%; background:var(--bg); color:var(--text); border:1px solid var(--border);
+      border-radius:8px; padding:10px; font-size:0.95rem; font-family:inherit;
+    }
+    textarea { min-height:70px; resize:vertical; }
+    button { padding:10px 14px; border:none; border-radius:8px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; font-size:0.9rem; }
+    button.secondary { background:transparent; border:1px solid var(--border); color:var(--text); }
+    button.danger { background:transparent; border:1px solid var(--danger); color:var(--danger); }
+    button:disabled { opacity:0.5; cursor:not-allowed; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .row > * { flex: 0 0 auto; }
+    .muted { color:var(--muted); font-size:0.85rem; }
+    .error { color:var(--danger); font-size:0.9rem; min-height:1.2em; margin-top:10px; }
+    .ok { color:#6fe39a; font-size:0.9rem; min-height:1.2em; margin-top:10px; }
+    .task { border:1px solid var(--border); border-radius:10px; padding:12px; margin-top:10px; }
+    .task-title { font-weight:600; }
+    .task-note { color:var(--muted); font-size:0.88rem; margin-top:4px; white-space:pre-wrap; }
+    .badge { display:inline-block; font-size:0.75rem; padding:2px 8px; border-radius:999px; border:1px solid var(--border); margin-left:6px; }
+    .hidden { display:none !important; }
+    .toggle-on { background:#2d7a4f; }
+    .toggle-off { background:#4a4f5c; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Admin Fuyuha Arshi</h1>
+  <button id="logoutBtn" class="secondary hidden">Logout</button>
+</header>
+
+<!-- Form login -->
+<main id="loginView" class="hidden">
+  <section class="panel" style="max-width:420px;margin:40px auto;width:100%">
+    <h2>Login</h2>
+    <form id="loginForm" autocomplete="off">
+      <label for="username">Username</label>
+      <input type="text" id="username" required autocomplete="username" />
+      <label for="password">Password</label>
+      <input type="password" id="password" required autocomplete="current-password" />
+      <div class="row" style="margin-top:14px"><button type="submit" id="loginBtn">Masuk</button></div>
+    </form>
+    <div class="error" id="loginError"></div>
+  </section>
+</main>
+
+<!-- Dashboard -->
+<main id="dashView" class="hidden">
+  <section class="panel">
+    <h2>Mode maintenance</h2>
+    <div class="row">
+      <button id="maintToggle">Memuat...</button>
+      <span class="muted" id="maintUpdated"></span>
+    </div>
+    <label for="maintMessage">Pesan untuk pengunjung</label>
+    <textarea id="maintMessage" maxlength="300"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button id="maintSave" class="secondary">Simpan pesan</button>
+    </div>
+    <div class="ok" id="maintOk"></div>
+    <div class="error" id="maintError"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Tugas maintenance</h2>
+    <label for="taskTitle">Judul</label>
+    <input type="text" id="taskTitle" maxlength="200" />
+    <label for="taskNote">Catatan (opsional)</label>
+    <textarea id="taskNote" maxlength="500"></textarea>
+    <div class="row" style="margin-top:10px"><button id="taskAdd">Tambah tugas</button></div>
+    <div class="error" id="taskError"></div>
+    <div id="taskList"></div>
+  </section>
+</main>
+
+<script src="admin.js"></script>
+</body>
+</html>

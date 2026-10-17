@@ -1,6 +1,30 @@
 {
   "rewrites": [
     { "source": "/image-vectorizer", "destination": "/image-vectorizer/image2svg.html" },
-    { "source": "/svg2am", "destination": "/svg2am/svg2am.html" }
+    { "source": "/svg2am", "destination": "/svg2am/svg2am.html" },
+    { "source": "/admin", "destination": "/admin/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/admin/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    },
+    {
+      "source": "/admin",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
   ]
 }
