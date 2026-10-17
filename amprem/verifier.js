@@ -1,6 +1,3 @@
-const FIREBASE_API_KEY = "AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0"; 
-
-// Fungsi pintar buat nge-extract oobCode dari link panjang
 function extractOobCode(rawUrl) {
     try {
         const urlObj = new URL(rawUrl);
@@ -16,7 +13,6 @@ function extractOobCode(rawUrl) {
     }
 }
 
-// Fungsi utama sesuai standar Claude: menerima value & mengembalikan { ok, message }
 async function verify(value) {
     value = value.trim();
     if (!value) {
@@ -25,16 +21,19 @@ async function verify(value) {
 
     const oobCode = extractOobCode(value);
 
-    // KONDISI 1: Jika yang di-paste adalah Magic Link
+    // KONDISI 1: Magic Link
     if (oobCode) {
         const savedEmail = localStorage.getItem('am_target_email') || "";
         
         try {
-            const endpoint = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink?key=${FIREBASE_API_KEY}`;
-            const response = await fetch(endpoint, {
+            const response = await fetch('/api/firebase-proxy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: savedEmail, oobCode: oobCode })
+                body: JSON.stringify({ 
+                    action: 'signInWithEmailLink', 
+                    email: savedEmail, 
+                    oobCode: oobCode 
+                })
             });
 
             const data = await response.json();
@@ -51,19 +50,17 @@ async function verify(value) {
             return { ok: false, message: `[NETWORK ERROR] ${err.message}` };
         }
     } 
-    // KONDISI 2: Jika yang diketik adalah Email
+    // KONDISI 2: Email
     else if (value.includes('@')) {
         localStorage.setItem('am_target_email', value);
 
         try {
-            const endpoint = `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`;
-            const response = await fetch(endpoint, {
+            const response = await fetch('/api/firebase-proxy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    requestType: "EMAIL_SIGNIN",
-                    email: value,
-                    continueUrl: "https://alightcreative.com"
+                body: JSON.stringify({ 
+                    action: 'sendOobCode', 
+                    email: value 
                 })
             });
 
@@ -81,36 +78,58 @@ async function verify(value) {
             return { ok: false, message: `[NETWORK ERROR] ${err.message}` };
         }
     } 
-    // KONDISI 3: Format ngawur
+    // KONDISI 3: Format Tidak Dikenal
     else {
         return { ok: false, message: "[ERROR] Format tidak dikenal. Masukkan email valid atau paste magic link secara utuh." };
     }
 }
 
-// Penghubung UI otomatis ke DOM
 document.addEventListener('DOMContentLoaded', () => {
     const inputEl = document.getElementById('input');
     const verifyBtn = document.getElementById('verifyBtn');
     const resultEl = document.getElementById('result');
+    const copyLogBtn = document.getElementById('copyLogBtn');
+
+    if (!inputEl || !verifyBtn || !resultEl) return;
 
     verifyBtn.addEventListener('click', async () => {
         const val = inputEl.value;
         verifyBtn.disabled = true;
         verifyBtn.textContent = 'Memproses...';
         resultEl.textContent = '[LOADING] Menghubungkan ke server Firebase...';
-        resultEl.className = 'bg-black/80 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap';
+        resultEl.className = 'bg-black/80 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap select-all';
 
         const res = await verify(val);
 
         verifyBtn.disabled = false;
         verifyBtn.textContent = 'Proses Verifikasi';
 
-        // Menyesuaikan warna border & text berdasarkan status ok/false dari fungsi verify()
         if (res.ok) {
-            resultEl.className = 'bg-black/80 border border-emerald-500/40 rounded-lg p-3 text-xs font-mono text-emerald-400 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap';
+            resultEl.className = 'bg-black/80 border border-emerald-500/40 rounded-lg p-3 text-xs font-mono text-emerald-400 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap select-all';
         } else {
-            resultEl.className = 'bg-black/80 border border-rose-500/40 rounded-lg p-3 text-xs font-mono text-rose-400 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap';
+            resultEl.className = 'bg-black/80 border border-rose-500/40 rounded-lg p-3 text-xs font-mono text-rose-400 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap select-all';
         }
         resultEl.textContent = res.message;
     });
+
+    if (copyLogBtn) {
+        copyLogBtn.addEventListener('click', async () => {
+            const textToCopy = resultEl.textContent;
+            if (!textToCopy) return;
+
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                const originalText = copyLogBtn.textContent;
+                copyLogBtn.textContent = 'Copied!';
+                copyLogBtn.classList.add('text-emerald-400');
+                
+                setTimeout(() => {
+                    copyLogBtn.textContent = originalText;
+                    copyLogBtn.classList.remove('text-emerald-400');
+                }, 2000);
+            } catch (err) {
+                alert('Gagal menyalin log.');
+            }
+        });
+    }
 });

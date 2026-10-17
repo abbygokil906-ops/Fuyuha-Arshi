@@ -28,10 +28,13 @@
             </button>
         </div>
 
-        <!-- Result Area -->
+        <!-- Result Area with Copy Feature -->
         <div class="space-y-1">
-            <div class="text-[10px] text-slate-400 px-1">amv2_result.log</div>
-            <div id="result" class="bg-black/80 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap">
+            <div class="flex justify-between items-center text-[10px] text-slate-400 px-1">
+                <span>amv2_result.log</span>
+                <button id="copyLogBtn" class="hover:text-emerald-400 transition-colors font-medium">Salin Log</button>
+            </div>
+            <div id="result" class="bg-black/80 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 min-h-[90px] max-h-40 overflow-y-auto whitespace-pre-wrap select-all">
                 [SYSTEM] Siap memproses input...
             </div>
         </div>
