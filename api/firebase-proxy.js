@@ -11,10 +11,16 @@ export default async function handler(req, res) {
 
     if (action === 'sendOobCode') {
         endpoint = `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`;
+        
+        // Generate atau gunakan ui_sid & ui_sd agar continueUrl tidak polosan
+        const sessionSid = uiSid || Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const sessionSd = uiSd || "1";
+
         payload = {
             requestType: "EMAIL_SIGNIN",
             email: email,
-            continueUrl: "https://alightcreative.com"
+            // Format continueUrl disesuaikan agar membawa parameter sesi Android Client
+            continueUrl: `https://alightcreative.com/?ui_sid=${sessionSid}&ui_sd=${sessionSd}`
         };
     } else if (action === 'signInWithEmailLink') {
         endpoint = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink?key=${FIREBASE_API_KEY}`;
@@ -43,7 +49,7 @@ export default async function handler(req, res) {
             return res.status(response.status).json(data);
         }
 
-        // Eksekusi nembak endpoint asli Alight Creative jika login sukses & ada uiSid
+        // Eksekusi nembak endpoint lisensi jika login sukses & ada oobCode yang diverifikasi
         let licenseResult = null;
         if (action === 'signInWithEmailLink' && data.idToken) {
             try {
