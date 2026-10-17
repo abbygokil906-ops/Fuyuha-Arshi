@@ -12,15 +12,16 @@ export default async function handler(req, res) {
     if (action === 'sendOobCode') {
         endpoint = `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`;
         
-        // Generate atau gunakan ui_sid & ui_sd agar continueUrl tidak polosan
         const sessionSid = uiSid || Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         const sessionSd = uiSd || "1";
 
         payload = {
             requestType: "EMAIL_SIGNIN",
             email: email,
-            // Format continueUrl disesuaikan agar membawa parameter sesi Android Client
-            continueUrl: `https://alightcreative.com/?ui_sid=${sessionSid}&ui_sd=${sessionSd}`
+            continueUrl: `https://alightcreative.com/auth_action?ui_sid=${sessionSid}&ui_sd=${sessionSd}`,
+            canHandleCodeInApp: true,
+            androidPackageName: "com.alightcreative.motion",
+            androidInstallApp: false
         };
     } else if (action === 'signInWithEmailLink') {
         endpoint = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink?key=${FIREBASE_API_KEY}`;
@@ -37,6 +38,8 @@ export default async function handler(req, res) {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
+                'X-Android-Package': 'com.alightcreative.motion',
+                'X-Android-Cert': 'A4022CE82388FA957A883B64348231438780B813',
                 'Referer': 'https://alight-creative.firebaseapp.com/',
                 'Origin': 'https://alight-creative.firebaseapp.com'
             },
@@ -49,25 +52,62 @@ export default async function handler(req, res) {
             return res.status(response.status).json(data);
         }
 
-        // Eksekusi nembak endpoint lisensi jika login sukses & ada oobCode yang diverifikasi
         let licenseResult = null;
+        let sessionResult = null;
+
         if (action === 'signInWithEmailLink' && data.idToken) {
+            const activeSid = uiSid || Math.random().toString(36).substring(2, 15);
+            const activeSd = uiSd || "1";
+            const appInstanceUuid = 'inst_' + Math.random().toString(36).substring(2, 15);
+
+            const commonHeaders = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${data.idToken}`,
+                'X-Android-Package': 'com.alightcreative.motion',
+                'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 10; POCO X3 NFC Build/QKQ1.200114.002)'
+            };
+
             try {
+                // TAHAP 1: Registrasi Sesi via userSessionBegan (Membawa payload lengkap UserSessionBeginRequest)
+                const sessionRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/userSessionBegan', {
+                    method: 'POST',
+                    headers: commonHeaders,
+                    body: JSON.stringify({
+                        data: {
+                            platform: "android",
+                            amVersionName: "5.0.0",
+                            amVersionCode: 5000000,
+                            amBuildName: "5.0.0.1",
+                            amBuildCode: 5000001,
+                            appInstance: appInstanceUuid,
+                            appDay: Date.now(),
+                            expectedAccountVersion: 1,
+                            acctTestMode: "false",
+                            ui_sid: activeSid,
+                            ui_sd: activeSd
+                        }
+                    })
+                });
+                
+                if (sessionRes.ok) {
+                    sessionResult = await sessionRes.json();
+                }
+
+                // TAHAP 2: Ambil Status & Lisensi Akun
                 const licenseRes = await fetch('https://us-central1-alight-creative.cloudfunctions.net/getAccountStatusAndLicenses', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${data.idToken}`,
-                        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36'
-                    },
+                    headers: commonHeaders,
                     body: JSON.stringify({
-                        ui_sid: uiSid || '',
-                        ui_sd: uiSd || ''
+                        data: {
+                            ui_sid: activeSid,
+                            ui_sd: activeSd
+                        }
                     })
                 });
                 
                 if (licenseRes.ok) {
-                    licenseResult = await licenseRes.json();
+                    const licData = await licenseRes.json();
+                    licenseResult = licData.result || licData;
                 } else {
                     licenseResult = { status_code: licenseRes.status, message: await licenseRes.text() };
                 }
@@ -78,6 +118,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({
             ...data,
+            session: sessionResult,
             license: licenseResult
         });
     } catch (err) {
