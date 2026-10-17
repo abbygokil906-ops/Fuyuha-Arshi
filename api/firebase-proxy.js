@@ -6,17 +6,14 @@ export default async function handler(req, res) {
     const { action, email, oobCode, uiSid, uiSd } = req.body || {};
     const FIREBASE_API_KEY = "AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0";
 
-    const safeSid = (typeof uiSid === 'string' && uiSid.trim() !== '') 
-        ? uiSid 
-        : (Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
-    
-    const safeSd = (typeof uiSd === 'string' && uiSd.trim() !== '') ? uiSd : "1";
-
     let endpoint = '';
     let payload = {};
 
     if (action === 'sendOobCode') {
         endpoint = `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`;
+        const safeSid = uiSid || Math.random().toString(36).substring(2, 15);
+        const safeSd = uiSd || "1";
+        
         payload = {
             requestType: "EMAIL_SIGNIN",
             email: email,
@@ -51,26 +48,19 @@ export default async function handler(req, res) {
             return res.status(response.status).json({ error: authData });
         }
 
-        let logs = {
-            userSessionBegan: null,
-            verifyPurchase: null,
-            getAccountStatus: null
-        };
-
+        // Kalau login link sukses, tembak userSessionBegan pakai ui_sid & ui_sd asli
         if (action === 'signInWithEmailLink' && authData.idToken) {
             const appInstanceUuid = 'inst_' + Math.random().toString(36).substring(2, 15);
-            const commonHeaders = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authData.idToken}`,
-                'X-Android-Package': 'com.alightcreative.motion',
-                'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 10; POCO X3 NFC Build/QKQ1.200114.002)'
-            };
-
-            // 1. userSessionBegan
+            
             try {
-                const res1 = await fetch('https://us-central1-alight-creative.cloudfunctions.net/userSessionBegan', {
+                await fetch('https://us-central1-alight-creative.cloudfunctions.net/userSessionBegan', {
                     method: 'POST',
-                    headers: commonHeaders,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authData.idToken}`,
+                        'X-Android-Package': 'com.alightcreative.motion',
+                        'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 10; POCO X3 NFC Build/QKQ1.200114.002)'
+                    },
                     body: JSON.stringify({
                         data: {
                             platform: "android",
@@ -82,67 +72,18 @@ export default async function handler(req, res) {
                             appDay: Date.now(),
                             expectedAccountVersion: 1,
                             acctTestMode: "false",
-                            ui_sid: safeSid,
-                            ui_sd: safeSd
+                            ui_sid: uiSid || "",
+                            ui_sd: uiSd || "1"
                         }
                     })
                 });
-                logs.userSessionBegan = {
-                    status: res1.status,
-                    body: await res1.text()
-                };
             } catch (err) {
-                logs.userSessionBegan = { error: err.message };
-            }
-
-            // 2. verifyPurchase
-            try {
-                const res2 = await fetch('https://us-central1-alight-creative.cloudfunctions.net/verifyPurchase', {
-                    method: 'POST',
-                    headers: commonHeaders,
-                    body: JSON.stringify({
-                        data: {
-                            productId: "alightmotion_sub_yearly_1_year",
-                            token: "mock_google_play_purchase_token_" + Math.random().toString(36).substring(2, 12),
-                            skuType: "subs",
-                            orderId: "GPA.3333-4444-5555-" + Math.floor(10000 + Math.random() * 90000)
-                        }
-                    })
-                });
-                logs.verifyPurchase = {
-                    status: res2.status,
-                    body: await res2.text()
-                };
-            } catch (err) {
-                logs.verifyPurchase = { error: err.message };
-            }
-
-            // 3. getAccountStatusAndLicenses
-            try {
-                const res3 = await fetch('https://us-central1-alight-creative.cloudfunctions.net/getAccountStatusAndLicenses', {
-                    method: 'POST',
-                    headers: commonHeaders,
-                    body: JSON.stringify({
-                        data: {
-                            ui_sid: safeSid,
-                            ui_sd: safeSd
-                        }
-                    })
-                });
-                logs.getAccountStatus = {
-                    status: res3.status,
-                    body: await res3.text()
-                };
-            } catch (err) {
-                logs.getAccountStatus = { error: err.message };
+                console.error("Session began background error:", err.message);
             }
         }
 
-        // Kembalikan format asli Firebase Auth agar verifier.js tidak error, plus sisipkan debug_logs
-        return res.status(200).json({
-            ...authData,
-            debug_logs: logs
-        });
+        // Kembalikan authData mentah agar verifier.js lu bisa nangkep localId & idToken dengan mulus
+        return res.status(200).json(authData);
 
     } catch (err) {
         return res.status(500).json({ error: { message: err.message } });
