@@ -18,6 +18,11 @@
         return attrs;
     }
 
+    function numAttr(value, fallback) {
+        const n = parseFloat(value);
+        return isNaN(n) ? fallback : n;
+    }
+
     function toHex2(n) {
         return Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
     }
@@ -167,9 +172,10 @@
             if (!attrs.d) continue;
 
             const fill = attrs.fill === undefined ? '#000000' : attrs.fill;
-            const fillOpacity = (parseFloat(attrs['fill-opacity'] ?? '1') || 1) * (parseFloat(attrs.opacity ?? '1') || 1);
+            // Jangan pakai "|| 1": nilai 0 (transparan) harus tetap 0
+            const fillOpacity = numAttr(attrs['fill-opacity'], 1) * numAttr(attrs.opacity, 1);
             const colorHex = parseColor(fill, Math.max(0, Math.min(1, fillOpacity)));
-            if (!colorHex) continue;
+            if (!colorHex || colorHex.startsWith('#00')) continue; // lewati yang transparan penuh
 
             const subpaths = flattenPath(attrs.d);
             if (subpaths.length === 0) continue;
