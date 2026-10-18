@@ -132,12 +132,42 @@
         return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
     }
 
+    let lastStats = null;
+    let lastLayers = [];
+
+    // Luas poligon (shoelace)
+    function subpathArea(sp) {
+        let a = 0;
+        for (let i = 0; i < sp.length - 1; i++) {
+            a += sp[i][0] * sp[i + 1][1] - sp[i + 1][0] * sp[i][1];
+        }
+        return Math.abs(a) / 2;
+    }
+
+    // Simpan subpath kalau cukup besar, atau kalau tipis (detail tipis dilindungi)
+    function keepSubpath(sp, minArea, protectThin) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const p of sp) {
+            if (p[0] < minX) minX = p[0];
+            if (p[0] > maxX) maxX = p[0];
+            if (p[1] < minY) minY = p[1];
+            if (p[1] > maxY) maxY = p[1];
+        }
+        const minDim = Math.min(maxX - minX, maxY - minY);
+        if (minDim < protectThin) return true;
+        return subpathArea(sp) >= minArea;
+    }
+
     /**
      * Konversi teks SVG ke teks scene XML Alight Motion.
      * options.title     : judul scene
      * options.duration  : durasi dalam ms (default 1000)
      * options.fps       : fps (default 30)
      * options.bgcolor   : warna latar, format #AARRGGBB (default #ffffffff)
+     * options.patchCleanup : buang subpath kecil (default false)
+     * options.patchThreshold : luas minimum subpath sebagai fraksi luas kanvas (default 0.0002)
+     * options.protectThin : subpath dengan sisi terpendek di bawah nilai ini tidak dibuang (default 2)
+     * options.include : array indeks layer yang diekspor (undefined = semua layer)
      */
     function convertSvgToAm(svgText, options) {
         options = options || {};
@@ -145,6 +175,9 @@
         const duration = options.duration || 1000;
         const fps = options.fps || 30;
         const bgcolor = options.bgcolor || '#ffffffff';
+        const patchCleanup = options.patchCleanup === true;
+        const patchThreshold = typeof options.patchThreshold === 'number' ? options.patchThreshold : 0.0002;
+        const protectThin = typeof options.protectThin === 'number' ? options.protectThin : 2.0;
 
         const svgTagMatch = svgText.match(/<svg\b[^>]*>/i);
         if (!svgTagMatch) throw new Error('Tag <svg> tidak ditemukan.');
@@ -160,11 +193,14 @@
         width = Math.round(width);
         height = Math.round(height);
 
+        const minPatchArea = patchThreshold * width * height;
+        let totalSub = 0, keptSub = 0;
+
         const offsetX = width / 2;
         const offsetY = height / 2;
 
         // Kumpulkan path dan gabungkan path berwarna sama yang berurutan
-        const groups = [];
+        let groups = [];
         const pathRe = /<path\b([^>]*?)\/?>/gi;
         let m;
         while ((m = pathRe.exec(svgText))) {
@@ -177,7 +213,10 @@
             const colorHex = parseColor(fill, Math.max(0, Math.min(1, fillOpacity)));
             if (!colorHex || colorHex.startsWith('#00')) continue; // lewati yang transparan penuh
 
-            const subpaths = flattenPath(attrs.d);
+            let subpaths = flattenPath(attrs.d);
+            totalSub += subpaths.length;
+            if (patchCleanup) subpaths = subpaths.filter(sp => keepSubpath(sp, minPatchArea, protectThin));
+            keptSub += subpaths.length;
             if (subpaths.length === 0) continue;
 
             const last = groups[groups.length - 1];
@@ -188,7 +227,27 @@
             }
         }
 
-        if (groups.length === 0) throw new Error('Tidak ada path dengan warna isi yang bisa dikonversi.');
+        // Daftar layer lengkap (sebelum filter), supaya indeks layer stabil
+        lastLayers = groups.map(function (g, i) {
+          var area = 0;
+          g.subpaths.forEach(function (sp) { area += subpathArea(sp); });
+          return { index: i, color: g.color, subpaths: g.subpaths.length, area: Math.round(area) };
+        });
+        if (lastLayers.length === 0) throw new Error('Tidak ada path dengan warna isi yang bisa dikonversi.');
+
+        // Filter layer: options.include = array indeks layer yang dipilih (undefined = semua)
+        if (Array.isArray(options.include)) {
+          groups = groups.filter(function (g, i) { return options.include.indexOf(i) >= 0; });
+        }
+        if (groups.length === 0) throw new Error('Pilih minimal satu layer.');
+
+        lastStats = {
+          width, height,
+          shapes: groups.length,
+          colors: new Set(groups.map(g => g.color)).size,
+          subpaths: keptSub,
+          removed: totalSub - keptSub
+        };
 
         const modified = Date.now();
         const shapes = groups.map((g, idx) => {
@@ -214,7 +273,11 @@
         return `<?xml version='1.0' encoding='UTF-8' ?>\n${sceneOpen}\n${shapes.join('\n')}\n</scene>\n`;
     }
 
-    const api = { convertSvgToAm, flattenPath, parseColor };
+    const api = {
+        convertSvgToAm, flattenPath, parseColor,
+        getLastStats: function () { return lastStats; },
+        getLastLayers: function () { return lastLayers; }
+    };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;

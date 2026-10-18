@@ -7,130 +7,148 @@
   <meta name="description" content="Ubah SVG menjadi file XML scene Alight Motion langsung di browser." />
   <style>
     :root {
-      --bg: #0f1115;
-      --panel: #171a21;
-      --border: #2a2f3a;
-      --text: #e6e8ee;
-      --muted: #8a909c;
-      --accent: #7c5cff;
-      --accent-hover: #6a49f0;
+      --bg: #07090d; --panel: rgba(18,21,28,0.9); --border: #252a35; --text: #eef0f5;
+      --muted: #9aa1ae; --accent: #ff7a59; --accent2: #38bdf8; --ok: #6fe39a; --bad: #ff6b6b;
     }
     * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
-    header { padding: 24px 20px 8px; text-align: center; }
-    header h1 { margin: 0; font-size: 1.6rem; }
-    header p { margin: 6px 0 0; color: var(--muted); font-size: 0.95rem; }
-    main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 16px 20px 40px;
-      display: grid;
-      gap: 20px;
-      grid-template-columns: 300px 1fr;
-    }
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: var(--bg); min-height: 100vh; }
+    header { padding: 22px 20px 6px; text-align: center; }
+    header h1 { margin: 0; font-size: 1.5rem; }
+    header p { margin: 6px 0 0; color: var(--muted); font-size: 0.92rem; }
+    main { max-width: 1080px; margin: 0 auto; padding: 14px 16px 40px; display: grid; gap: 16px; grid-template-columns: 330px 1fr; }
     @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 18px;
-    }
-    .file-input {
-      display: block;
-      width: 100%;
-      padding: 14px;
-      border: 2px dashed var(--border);
-      border-radius: 10px;
-      text-align: center;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-    .file-input:hover { border-color: var(--accent); color: var(--text); }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+    h2 { margin: 0 0 10px; font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+    .drop { display: block; border: 2px dashed var(--border); border-radius: 12px; padding: 18px 12px; text-align: center; color: var(--muted); cursor: pointer; font-size: 0.9rem; transition: border-color .2s, color .2s; }
+    .drop:hover, .drop.over { border-color: var(--accent); color: var(--text); }
+    .drop strong { display: block; color: var(--text); margin-bottom: 4px; }
     input[type="file"] { display: none; }
-    label.field { display: block; font-size: 0.85rem; color: var(--muted); margin: 14px 0 6px; }
-    input[type="text"] {
-      width: 100%;
-      background: var(--bg);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 9px 10px;
-      font-size: 0.95rem;
+    label.field { display: block; font-size: 0.82rem; color: var(--muted); margin: 14px 0 6px; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    input[type="text"], input[type="number"] {
+      width: 100%; background: #0c0f15; color: var(--text); border: 1px solid var(--border);
+      border-radius: 9px; padding: 10px; font-size: 0.95rem; font-family: inherit;
     }
+    input:focus { outline: none; border-color: var(--accent); }
+    .switch { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; background: #0c0f15; border: 1px solid var(--border); border-radius: 10px; margin-top: 12px; cursor: pointer; }
+    .switch small { display: block; color: var(--muted); font-size: 0.76rem; margin-top: 2px; }
+    .switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     button {
-      width: 100%;
-      margin-top: 18px;
-      padding: 11px;
-      border: none;
-      border-radius: 8px;
-      background: var(--accent);
-      color: #fff;
-      font-size: 1rem;
-      cursor: pointer;
-      font-weight: 600;
+      width: 100%; margin-top: 10px; padding: 11px; border: none; border-radius: 10px;
+      background: linear-gradient(90deg, #8b5cf6, #22c55e); color: #fff; font-weight: 700; font-size: 0.95rem; cursor: pointer;
     }
-    button:hover:not(:disabled) { background: var(--accent-hover); }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .preview-box {
-      background: #fff;
-      border-radius: 10px;
-      min-height: 280px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      margin-bottom: 14px;
-    }
-    .preview-box svg { max-width: 100%; max-height: 420px; height: auto; }
-    .placeholder { color: #999; font-size: 0.9rem; padding: 20px; text-align: center; }
-    pre {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-      max-height: 320px;
-      overflow: auto;
-      font-size: 0.8rem;
-      white-space: pre-wrap;
-      word-break: break-all;
-      margin: 0;
-    }
-    .status { margin-top: 12px; font-size: 0.9rem; color: var(--muted); min-height: 1.2em; }
-    .status.error { color: #ff6b6b; }
-    footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding-bottom: 30px; }
+    button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); font-weight: 600; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .badge { font-size: 0.72rem; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+    .badge.ok { color: var(--ok); border-color: rgba(111,227,154,.4); }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .stat { background: #0c0f15; border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+    .stat b { display: block; font-size: 1.1rem; }
+    .stat span { font-size: 0.72rem; color: var(--muted); }
+    .tabs { display: flex; gap: 6px; background: #0c0f15; padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
+    .tabs button { margin: 0; flex: 1; padding: 8px; background: transparent; color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+    .tabs button.on { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+    .preview { margin-top: 12px; background: #fff; border-radius: 12px; min-height: 240px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .preview svg { max-width: 100%; max-height: 420px; height: auto; }
+    .placeholder { color: #888; font-size: 0.9rem; padding: 20px; text-align: center; }
+    pre { margin: 12px 0 0; background: #0c0f15; border: 1px solid var(--border); border-radius: 10px; padding: 12px; max-height: 320px; overflow: auto; font-size: 0.78rem; white-space: pre-wrap; word-break: break-all; }
+    .note { font-size: 0.78rem; color: var(--muted); margin-top: 8px; }
+    .layers { margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; background: #0c0f15; }
+    .layers-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.82rem; color: var(--muted); }
+    .layers-head .mini { width: auto; margin: 0; padding: 6px 10px; font-size: 0.76rem; }
+    .layer-list { max-height: 260px; overflow: auto; }
+    .layer { display: grid; grid-template-columns: 22px 1fr auto 22px; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.84rem; }
+    .layer:last-child { border-bottom: none; }
+    .swatch { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); }
+    .layer small { color: var(--muted); display: block; font-size: 0.72rem; }
+    .layer input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .layers-empty { padding: 12px; font-size: 0.8rem; color: var(--muted); }
+    .status { margin-top: 12px; font-size: 0.9rem; color: var(--muted); min-height: 1.3em; }
+    .status.error { color: var(--bad); }
+    .status.ok { color: var(--ok); }
+    footer { text-align: center; color: var(--muted); font-size: 0.78rem; padding-bottom: 28px; }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>Fuyuha SVG2AM</h1>
-  <p>Ubah SVG menjadi file XML scene Alight Motion.</p>
+  <h1>SVG to Alight Motion</h1>
+  <p>Ubah SVG menjadi file XML scene yang bisa diimpor ke Alight Motion.</p>
 </header>
 
 <main>
   <section class="panel">
-    <label for="svg-input" class="file-input">Klik untuk pilih file SVG</label>
-    <input type="file" id="svg-input" accept=".svg,image/svg+xml" />
+    <h2>01 · Sumber</h2>
+    <label class="drop" id="drop" for="svgInput">
+      <strong>Pilih atau jatuhkan SVG</strong>
+      Maksimal 2 MB · file tidak disimpan
+    </label>
+    <input type="file" id="svgInput" accept=".svg,image/svg+xml" />
 
-    <label class="field" for="title-input">Judul scene</label>
-    <input type="text" id="title-input" value="SVG Import" />
+    <label class="field" for="titleInput">Judul scene</label>
+    <input type="text" id="titleInput" value="SVG Import" />
 
-    <button id="download-btn" disabled>Unduh XML</button>
+    <label class="field" for="nameInput">Nama file download</label>
+    <div class="row">
+      <input type="text" id="nameInput" value="scene" />
+      <span class="badge">.xml</span>
+    </div>
+
+    <h2 style="margin-top:18px">02 · Pembersihan</h2>
+    <label class="switch" for="patchToggle">
+      <span>Small Patch Cleanup<small>Buang potongan vektor yang sangat kecil.</small></span>
+      <input type="checkbox" id="patchToggle" checked />
+    </label>
+    <div class="grid2" style="margin-top:10px">
+      <div>
+        <label class="field" for="thresholdInput">Ambang (fraksi luas)</label>
+        <input type="number" id="thresholdInput" value="0.0002" step="0.0001" min="0" />
+      </div>
+      <div>
+        <label class="field" for="thinInput">Lindungi detail tipis (px)</label>
+        <input type="number" id="thinInput" value="2" step="0.5" min="0" />
+      </div>
+    </div>
+
+    <h2 style="margin-top:18px">03 · Layer</h2>
+    <div class="layers">
+      <div class="layers-head">
+        <span id="layerCount">Belum ada layer</span>
+        <div class="row" style="gap:6px">
+          <button type="button" class="mini ghost" id="selAllBtn" disabled>Semua</button>
+          <button type="button" class="mini ghost" id="selNoneBtn" disabled>Kosong</button>
+        </div>
+      </div>
+      <div class="layer-list" id="layerList"><div class="layers-empty">Pilih SVG untuk melihat layer.</div></div>
+    </div>
+
+    <button id="convertBtn" disabled>Convert ke XML</button>
+    <button id="copyBtn" class="ghost" disabled>Salin XML</button>
+    <button id="downloadBtn" class="ghost" disabled>Download XML</button>
     <div class="status" id="status"></div>
   </section>
 
   <section class="panel">
-    <div class="preview-box" id="svg-container">
-      <div class="placeholder">Pratinjau SVG akan tampil di sini</div>
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">03 · Hasil</h2>
+      <span class="badge" id="readyBadge">MENUNGGU</span>
     </div>
-    <pre id="xml-output">Hasil XML akan tampil di sini</pre>
+
+    <div class="stats">
+      <div class="stat"><b id="stShapes">0</b><span>shape</span></div>
+      <div class="stat"><b id="stColors">0</b><span>warna</span></div>
+      <div class="stat"><b id="stRemoved">0</b><span>patch dibuang</span></div>
+    </div>
+
+    <div class="tabs" style="margin-top:14px">
+      <button class="on" data-tab="svg" type="button">SVG asli</button>
+      <button data-tab="xml" type="button">Preview XML</button>
+    </div>
+
+    <div class="preview" id="previewBox"><div class="placeholder">Pilih SVG untuk memulai</div></div>
+    <pre id="xmlPreview" class="hidden" style="display:none"></pre>
+    <div class="note" id="xmlNote"></div>
   </section>
 </main>
 
