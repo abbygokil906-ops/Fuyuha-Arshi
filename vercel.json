@@ -2,7 +2,8 @@
   "rewrites": [
     { "source": "/image-vectorizer", "destination": "/image-vectorizer/image2svg.html" },
     { "source": "/svg2am", "destination": "/svg2am/svg2am.html" },
-    { "source": "/admin", "destination": "/admin/index.html" }
+    { "source": "/admin", "destination": "/admin/index.html" },
+    { "source": "/inspect", "destination": "/inspect/inspect.html" }
   ],
   "headers": [
     {
