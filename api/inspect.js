@@ -1,32 +1,50 @@
-const { fetchPage } = require('../lib/fetcher');
-const { summarize } = require('../lib/summarize');
+const { isSafeUrl } = require('../lib/safety');
+const { safeFetch } = require('../lib/fetcher');
+const { extractSecretsAndSummary } = require('../lib/summarize');
 
-export default async function handler(req, res) {
-  // Set header keamanan & CORS
+module.exports = async (req, res) => {
+  // Set CORS Header biar frontend bisa ngobrol lancar
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  const targetUrl = req.query.url || (req.body && req.body.url);
 
-  const target = req.query.url;
-  if (!target) {
-    return res.status(400).json({ error: 'Parameter url wajib diisi' });
+  if (!targetUrl) {
+    return res.status(400).json({ error: 'URL target tidak boleh kosong.' });
   }
 
   try {
-    const page = await fetchPage(target);
-    const data = summarize(page);
-    return res.status(200).json(data);
+    // Validasi SSRF
+    const safeCheck = await isSafeUrl(targetUrl);
+    if (!safeCheck.safe) {
+      return res.status(400).json({ error: `URL ditolak (SSRF Protection): ${safeCheck.reason}` });
+    }
+
+    // Fetch Konten Target
+    const fetchResult = await safeFetch(targetUrl);
+    if (!fetchResult.ok) {
+      return res.status(502).json({ error: `Gagal mengambil URL target (Status: ${fetchResult.status})` });
+    }
+
+    // Extraction / Parsing Cheerio
+    const summary = await extractSecretsAndSummary(fetchResult.html, fetchResult.finalUrl);
+
+    return res.status(200).json({
+      success: true,
+      url: fetchResult.finalUrl,
+      status: fetchResult.status,
+      ...summary
+    });
   } catch (err) {
-    return res.status(400).json({ error: err.message });
+    console.error('Inspector Backend Error:', err);
+    return res.status(500).json({ 
+      error: 'Internal Server Error pada Backend Inspector',
+      details: err.message 
+    });
   }
-}
+};
