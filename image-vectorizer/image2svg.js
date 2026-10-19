@@ -204,6 +204,148 @@
     setStatus('Rekomendasi diterapkan. Klik Trace.', 'ok');
   });
 
+  // ---------- Palet warna: k-means di ruang warna CIE Lab ----------
+  // Lab = jarak warna mendekati persepsi mata manusia (RGB berjarak tidak seimbang).
+  function srgbToLinear(c) { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function linearToSrgb(c) {
+    c = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+    return Math.max(0, Math.min(255, Math.round(c * 255)));
+  }
+  function rgbToLab(r, g, b) {
+    var R = srgbToLinear(r), G = srgbToLinear(g), B = srgbToLinear(b);
+    var X = (0.4124 * R + 0.3576 * G + 0.1805 * B) / 0.95047;
+    var Y = 0.2126 * R + 0.7152 * G + 0.0722 * B;
+    var Z = (0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.08883;
+    var fx = X > 0.008856 ? Math.cbrt(X) : 7.787 * X + 16 / 116;
+    var fy = Y > 0.008856 ? Math.cbrt(Y) : 7.787 * Y + 16 / 116;
+    var fz = Z > 0.008856 ? Math.cbrt(Z) : 7.787 * Z + 16 / 116;
+    return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+  }
+  function labToRgb(L, a, b) {
+    var fy = (L + 16) / 116, fx = fy + a / 500, fz = fy - b / 200;
+    function inv(t) { return t * t * t > 0.008856 ? t * t * t : (t - 16 / 116) / 7.787; }
+    var X = inv(fx) * 0.95047, Y = inv(fy), Z = inv(fz) * 1.08883;
+    return {
+      r: linearToSrgb(3.2406 * X - 1.5372 * Y - 0.4986 * Z),
+      g: linearToSrgb(-0.9689 * X + 1.8758 * Y + 0.0415 * Z),
+      b: linearToSrgb(0.0557 * X - 0.2040 * Y + 1.0570 * Z)
+    };
+  }
+  function labDist(p, q) {
+    var dL = p[0] - q[0], da = p[1] - q[1], db = p[2] - q[2];
+    return dL * dL + da * da + db * db;
+  }
+
+  // Palet k warna. Piksel tepi (anti-aliasing) dilewati supaya warna campuran di batas
+  // tidak ikut menjadi warna sendiri. Warna yang hampir sama (ΔE < 4) digabung.
+  function kmeansPalette(imgd, k) {
+    var d = imgd.data, w = imgd.width, h = imgd.height, pts = [];
+    var step = Math.max(1, Math.floor(Math.sqrt((w * h) / 20000)));
+    function lum(q) { return 0.3 * d[q] + 0.59 * d[q + 1] + 0.11 * d[q + 2]; }
+    for (var y = 0; y < h; y += step) {
+      for (var x = 0; x < w; x += step) {
+        var p = (y * w + x) * 4;
+        if (d[p + 3] < 128) continue;
+        if (x + 1 < w && d[p + 7] >= 128 && Math.abs(lum(p) - lum(p + 4)) > 18) continue;
+        if (y + 1 < h && d[p + w * 4 + 3] >= 128 && Math.abs(lum(p) - lum(p + w * 4)) > 18) continue;
+        pts.push(rgbToLab(d[p], d[p + 1], d[p + 2]));
+      }
+    }
+    if (pts.length === 0) {
+      for (var q = 0; q < d.length; q += 4 * step) {
+        if (d[q + 3] >= 128) pts.push(rgbToLab(d[q], d[q + 1], d[q + 2]));
+      }
+    }
+    if (pts.length === 0) return [];
+
+    var kk = Math.max(1, Math.min(k, pts.length));
+    // k-means++ init, deterministik: mulai dari piksel pertama, lalu titik terjauh
+    var cent = [pts[0].slice()];
+    var dist = pts.map(function (c) { return labDist(c, cent[0]); });
+    while (cent.length < kk) {
+      var best = 0;
+      for (var i = 1; i < dist.length; i++) if (dist[i] > dist[best]) best = i;
+      cent.push(pts[best].slice());
+      for (var j = 0; j < pts.length; j++) dist[j] = Math.min(dist[j], labDist(pts[j], cent[cent.length - 1]));
+    }
+
+    var counts = [];
+    for (var it = 0; it < 12; it++) {
+      counts = cent.map(function () { return 0; });
+      var sums = cent.map(function () { return [0, 0, 0]; });
+      for (var a = 0; a < pts.length; a++) {
+        var bi = 0, bd = Infinity;
+        for (var c = 0; c < cent.length; c++) {
+          var dd = labDist(pts[a], cent[c]);
+          if (dd < bd) { bd = dd; bi = c; }
+        }
+        counts[bi]++;
+        sums[bi][0] += pts[a][0]; sums[bi][1] += pts[a][1]; sums[bi][2] += pts[a][2];
+      }
+      for (var q2 = 0; q2 < cent.length; q2++) {
+        if (counts[q2] > 0) cent[q2] = [sums[q2][0] / counts[q2], sums[q2][1] / counts[q2], sums[q2][2] / counts[q2]];
+      }
+    }
+
+    // Gabung warna yang hampir sama (ΔE < 4)
+    var out = [];
+    cent.forEach(function (lab, idx) {
+      if (counts[idx] === 0) return;
+      for (var m = 0; m < out.length; m++) {
+        if (labDist(lab, out[m].lab) < 16) { out[m].count += counts[idx]; return; }
+      }
+      var rgb = labToRgb(lab[0], lab[1], lab[2]);
+      out.push({ r: rgb.r, g: rgb.g, b: rgb.b, lab: lab, count: counts[idx] });
+    });
+    return out.sort(function (x, y) { return y.count - x.count; });
+  }
+
+  // Trace per warna: tiap warna palet jadi mask hitam putih, ditrace, lalu diberi warna aslinya
+  function traceByColor(base) {
+    var k = parseInt(colorsRange.value, 10);
+    var palette = kmeansPalette(base, k);
+    if (!palette.length) throw new Error('Gambar tidak punya piksel yang terlihat.');
+    var d = base.data, n = base.width * base.height;
+    var palLab = palette.map(function (c) { return c.lab; });
+    // Tetapkan setiap piksel opaque ke palet terdekat (jarak Lab)
+    var idx = new Int16Array(n).fill(-1);
+    for (var p = 0, i = 0; i < n; i++, p += 4) {
+      if (d[p + 3] < 128) continue;
+      var lab = rgbToLab(d[p], d[p + 1], d[p + 2]);
+      var bi = 0, bd = Infinity;
+      for (var c = 0; c < palLab.length; c++) {
+        var dd = labDist(lab, palLab[c]);
+        if (dd < bd) { bd = dd; bi = c; }
+      }
+      idx[i] = bi;
+    }
+    var noise = parseInt(noiseRange.value, 10), smooth = parseInt(smoothRange.value, 10);
+    var out = [];
+    palette.forEach(function (col, ci) {
+      var mask = { width: base.width, height: base.height, data: new Uint8ClampedArray(n * 4) };
+      var m = mask.data, any = false;
+      for (var j = 0; j < n; j++) {
+        var q = j * 4;
+        if (idx[j] === ci) { m[q] = m[q + 1] = m[q + 2] = 0; any = true; }
+        else { m[q] = m[q + 1] = m[q + 2] = 255; }
+        m[q + 3] = 255;
+      }
+      if (!any) return;
+      var svg = IT.imagedataToSVG(mask, {
+        numberofcolors: 2, colorsampling: 0, colorquantcycles: 1,
+        pathomit: noise, blurradius: smooth, blurdelta: 20,
+        ltres: 1, qtres: 1, strokewidth: 0
+      });
+      var fill = 'rgb(' + col.r + ',' + col.g + ',' + col.b + ')';
+      pathsOf(svg).forEach(function (pp) {
+        if (fillLuminance(pp.fill) < 128) {
+          out.push(pp.tag.replace(/fill="[^"]*"/, 'fill="' + fill + '"'));
+        }
+      });
+    });
+    return out;
+  }
+
   // ---------- Helper trace ----------
   function cloneImgd(src) {
     return { width: src.width, height: src.height, data: new Uint8ClampedArray(src.data) };
@@ -237,13 +379,12 @@
   }
 
   function traceDual(base) {
-    var fillSvg = IT.imagedataToSVG(cloneImgd(base), buildOptions());
+    var fillTags = traceByColor(cloneImgd(base));
     var lineSvg = IT.imagedataToSVG(lineMask(cloneImgd(base), parseInt(lineRange.value, 10)), {
       numberofcolors: 2, colorsampling: 2, colorquantcycles: 3, pathomit: 1,
       blurradius: 0, blurdelta: 20, ltres: 0.5, qtres: 0.5, strokewidth: 0
     });
-    var header = /<svg\b[^>]*>/.exec(fillSvg)[0];
-    var fillTags = pathsOf(fillSvg).map(function (p) { return p.tag; });
+    var header = '<svg width="' + base.width + '" height="' + base.height + '" version="1.1" xmlns="http://www.w3.org/2000/svg">';
     var lineTags = pathsOf(lineSvg).filter(function (p) { return fillLuminance(p.fill) < 128; })
       .map(function (p) { return p.tag; });
     return [header,
@@ -413,9 +554,14 @@
         if (mode === 'dual') {
           fullSvg = traceDual(base);
           lastImgd = prepare(cloneImgd(base), false);
+        } else if (mode === 'color') {
+          var tags = traceByColor(prepare(cloneImgd(base), false));
+          fullSvg = ['<svg width="' + base.width + '" height="' + base.height + '" version="1.1" xmlns="http://www.w3.org/2000/svg">']
+            .concat(tags).concat(['</svg>']).join('\n');
+          lastImgd = prepare(cloneImgd(base), false);
         } else {
-          fullSvg = IT.imagedataToSVG(prepare(cloneImgd(base), mode === 'bw'), buildOptions());
-          lastImgd = prepare(cloneImgd(base), mode === 'bw');
+          fullSvg = IT.imagedataToSVG(prepare(cloneImgd(base), true), buildOptions());
+          lastImgd = prepare(cloneImgd(base), true);
         }
         layers = parseLayers(fullSvg);
         selected = {};
