@@ -300,6 +300,44 @@
     return out.sort(function (x, y) { return y.count - x.count; });
   }
 
+  // Mode filter 3x3: piksel diganti label terbanyak di sekitarnya (menghapus bintik)
+  function modeFilter(idx, w, h) {
+    var out = new Int16Array(idx.length);
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var j = y * w + x, cur = idx[j];
+        if (cur < 0) { out[j] = -1; continue; }
+        var counts = {};
+        for (var dy = -1; dy <= 1; dy++) {
+          for (var dx = -1; dx <= 1; dx++) {
+            var xx = x + dx, yy = y + dy;
+            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+            var v = idx[yy * w + xx];
+            if (v < 0) continue;
+            counts[v] = (counts[v] || 0) + 1;
+          }
+        }
+        var selfN = counts[cur] || 0, best = cur, bestN = selfN;
+        for (var key in counts) {
+          if (counts[key] > bestN) { bestN = counts[key]; best = +key; }
+        }
+        out[j] = best;
+      }
+    }
+    return out;
+  }
+
+  // Piksel j termasuk label ci, atau bertetangga 4 arah dengan label ci
+  function inLabel(idx, w, h, j, ci) {
+    if (idx[j] === ci) return true;
+    var x = j % w, y = (j - x) / w;
+    if (x > 0 && idx[j - 1] === ci) return true;
+    if (x < w - 1 && idx[j + 1] === ci) return true;
+    if (y > 0 && idx[j - w] === ci) return true;
+    if (y < h - 1 && idx[j + w] === ci) return true;
+    return false;
+  }
+
   // Trace per warna: tiap warna palet jadi mask hitam putih, ditrace, lalu diberi warna aslinya
   function traceByColor(base) {
     var k = parseInt(colorsRange.value, 10);
@@ -319,6 +357,9 @@
       }
       idx[i] = bi;
     }
+    // Hilangkan bintik: setiap piksel mengikuti label mayoritas di sekitarnya (3x3)
+    idx = modeFilter(idx, base.width, base.height);
+    var W = base.width, H = base.height;
     var noise = parseInt(noiseRange.value, 10), smooth = parseInt(smoothRange.value, 10);
     var out = [];
     palette.forEach(function (col, ci) {
@@ -326,7 +367,8 @@
       var m = mask.data, any = false;
       for (var j = 0; j < n; j++) {
         var q = j * 4;
-        if (idx[j] === ci) { m[q] = m[q + 1] = m[q + 2] = 0; any = true; }
+        // Mask diperlebar 1 piksel ke tetangga, supaya tidak ada celah putih antar layer
+        if (inLabel(idx, W, H, j, ci)) { m[q] = m[q + 1] = m[q + 2] = 0; any = true; }
         else { m[q] = m[q + 1] = m[q + 2] = 255; }
         m[q + 3] = 255;
       }
