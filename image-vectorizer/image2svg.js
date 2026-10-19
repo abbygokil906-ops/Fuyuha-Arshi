@@ -11,11 +11,12 @@
   var sizeSelect = $('sizeSelect'), presetSelect = $('presetSelect');
   var traceBtn = $('traceBtn'), copyBtn = $('copyBtn'), downloadBtn = $('downloadBtn');
   var nameInput = $('nameInput'), statusEl = $('status'), readyBadge = $('readyBadge');
-  var viewBox = $('viewBox'), stObj = $('stObj'), stCol = $('stCol'), stKb = $('stKb');
+  var viewBox = $('viewBox'), stObj = $('stObj'), stCol = $('stCol'), stKb = $('stKb'), stFid = $('stFid');
   var analyzeBtn = $('analyzeBtn'), applyBtn = $('applyBtn'), analysisText = $('analysisText');
   var layerList = $('layerList'), layerCount = $('layerCount'), selAllBtn = $('selAllBtn'), selNoneBtn = $('selNoneBtn');
 
-  var mode = 'color', view = 'orig';
+  var mode = 'color', view = 'orig', lastImgd = null;
+  var lineWrap = $('lineWrap'), lineRange = $('lineRange'), lineVal = $('lineVal');
   var srcUrl = null, srcImg = null, srcName = 'hasil';
   var fullSvg = null, svgText = null;      // fullSvg = hasil trace utuh, svgText = setelah filter layer
   var layers = [], selected = {};
@@ -36,6 +37,7 @@
     var all = modeSeg.querySelectorAll('button');
     for (var i = 0; i < all.length; i++) all[i].classList.toggle('on', all[i].getAttribute('data-mode') === m);
     colorsRange.disabled = (m === 'bw');
+    lineWrap.style.display = (m === 'dual') ? 'block' : 'none';
   }
   modeSeg.addEventListener('click', function (e) {
     var b = e.target.closest('button[data-mode]');
@@ -44,6 +46,7 @@
   colorsRange.addEventListener('input', function () { colorsVal.textContent = colorsRange.value; });
   smoothRange.addEventListener('input', function () { smoothVal.textContent = smoothRange.value; });
   noiseRange.addEventListener('input', function () { noiseVal.textContent = noiseRange.value; });
+  lineRange.addEventListener('input', function () { lineVal.textContent = lineRange.value; });
 
   // ---------- Muat gambar ----------
   fileInput.addEventListener('change', function () { loadFile(fileInput.files[0]); });
@@ -76,7 +79,7 @@
         analysisText.textContent = 'Klik Analisis untuk mendapat rekomendasi setting.';
         copyBtn.disabled = true; downloadBtn.disabled = true;
         setReady(false);
-        stObj.textContent = '0'; stCol.textContent = '0'; stKb.textContent = '0';
+        stObj.textContent = '0'; stCol.textContent = '0'; stKb.textContent = '0'; stFid.textContent = '-';
         renderLayers();
         view = 'orig'; applyView();
         setStatus('Gambar dimuat. Klik Analisis atau atur manual, lalu Trace.', 'ok');
@@ -152,21 +155,28 @@
     var transparent = 1 - opaque / n;
 
     var rec, type, why;
-    if (sat < 0.08 && k <= 4) {
-      type = 'Hitam putih / line art';
-      rec = { mode: 'bw', colors: 2, smooth: 0, noise: 10 };
-      why = 'warna hampir abu-abu dan hanya ' + k + ' warna dominan.';
+    if (sat < 0.08) {
+      // Gambar hampir tanpa warna: selalu rekomendasikan Hitam & Putih
+      if (k <= 4) {
+        type = 'Hitam putih / line art';
+        rec = { mode: 'bw', colors: 2, smooth: 0, noise: 6 };
+        why = 'hampir tanpa warna dan hanya ' + k + ' tone dominan.';
+      } else {
+        type = 'Grayscale / sketsa';
+        rec = { mode: 'bw', colors: 2, smooth: 0, noise: 4 };
+        why = 'hampir tanpa warna (abu-abu) dengan banyak tone, cocok dibuat hitam putih.';
+      }
     } else if (flat > 0.75 && k <= 16) {
       type = 'Ilustrasi datar';
-      rec = { mode: 'color', colors: Math.min(16, Math.max(4, k + 2)), smooth: 1, noise: 8 };
+      rec = { mode: 'color', colors: Math.min(16, Math.max(8, k + 2)), smooth: 0, noise: 4 };
       why = 'area warna sangat rata (' + Math.round(flat * 100) + '% piksel sama dengan tetangganya).';
     } else if (k > 40 || flat < 0.4) {
       type = 'Foto / gambar kompleks';
-      rec = { mode: 'color', colors: 16, smooth: 2, noise: 16 };
+      rec = { mode: 'color', colors: 16, smooth: 1, noise: 8 };
       why = 'banyak variasi warna (' + k + ' warna dominan) dan tekstur halus.';
     } else {
       type = 'Ilustrasi bertekstur / anime berbayangan';
-      rec = { mode: 'color', colors: Math.min(12, Math.max(6, k + 2)), smooth: 1, noise: 12 };
+      rec = { mode: 'color', colors: Math.min(16, Math.max(10, k + 2)), smooth: 0, noise: 5 };
       why = 'ada area datar dengan bayangan (' + k + ' warna dominan, ' + Math.round(edgeRatio * 100) + '% tepi).';
     }
     rec.type = type; rec.why = why; rec.transparent = Math.round(transparent * 100);
@@ -194,13 +204,62 @@
     setStatus('Rekomendasi diterapkan. Klik Trace.', 'ok');
   });
 
+  // ---------- Helper trace ----------
+  function cloneImgd(src) {
+    return { width: src.width, height: src.height, data: new Uint8ClampedArray(src.data) };
+  }
+
+  // Dual Engine, engine Line: piksel gelap jadi hitam, sisanya putih
+  function lineMask(imgd, threshold) {
+    var d = imgd.data;
+    for (var p = 0; p < d.length; p += 4) {
+      if (d[p + 3] < 128) { d[p] = d[p + 1] = d[p + 2] = 255; d[p + 3] = 255; continue; }
+      var lum = 0.3 * d[p] + 0.59 * d[p + 1] + 0.11 * d[p + 2];
+      var v = lum < threshold ? 0 : 255;
+      d[p] = d[p + 1] = d[p + 2] = v; d[p + 3] = 255;
+    }
+    return imgd;
+  }
+
+  function pathsOf(svg) {
+    var out = [], re = /<path\b[^>]*\/>/g, m;
+    while ((m = re.exec(svg))) {
+      var f = /fill="([^"]*)"/.exec(m[0]);
+      out.push({ tag: m[0], fill: f ? f[1] : 'none' });
+    }
+    return out;
+  }
+
+  function fillLuminance(fill) {
+    var m = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(fill);
+    if (!m) return 255;
+    return 0.3 * +m[1] + 0.59 * +m[2] + 0.11 * +m[3];
+  }
+
+  function traceDual(base) {
+    var fillSvg = IT.imagedataToSVG(cloneImgd(base), buildOptions());
+    var lineSvg = IT.imagedataToSVG(lineMask(cloneImgd(base), parseInt(lineRange.value, 10)), {
+      numberofcolors: 2, colorsampling: 2, colorquantcycles: 3, pathomit: 1,
+      blurradius: 0, blurdelta: 20, ltres: 0.5, qtres: 0.5, strokewidth: 0
+    });
+    var header = /<svg\b[^>]*>/.exec(fillSvg)[0];
+    var fillTags = pathsOf(fillSvg).map(function (p) { return p.tag; });
+    var lineTags = pathsOf(lineSvg).filter(function (p) { return fillLuminance(p.fill) < 128; })
+      .map(function (p) { return p.tag; });
+    return [header,
+      '<g id="fill">', fillTags.join('\n'), '</g>',
+      '<g id="line">', lineTags.join('\n'), '</g>',
+      '</svg>'].join('\n');
+  }
+
   // ---------- Opsi trace ----------
   function buildOptions() {
     var preset = IT.optionpresets[presetSelect.value] || {};
     var o = {};
     for (var k in preset) if (preset.hasOwnProperty(k)) o[k] = preset[k];
     o.numberofcolors = mode === 'bw' ? 2 : parseInt(colorsRange.value, 10);
-    o.colorsampling = 0;
+    o.colorsampling = 2;      // ambil warna dari gambar (0 = palet tetap, membuat warna meleset)
+    o.colorquantcycles = 3;   // rapikan palet beberapa siklus
     o.pathomit = parseInt(noiseRange.value, 10);
     o.blurradius = parseInt(smoothRange.value, 10);
     o.blurdelta = 20;
@@ -304,6 +363,37 @@
     renderLayers(); applyLayerFilter();
   });
 
+  // Kemiripan warna: rasterisasi SVG di canvas, lalu bandingkan dengan piksel asli (skor 0-100)
+  function fidelity(svg, imgd) {
+    return new Promise(function (resolve) {
+      try {
+        var blob = new Blob([svg], { type: 'image/svg+xml' });
+        var url = URL.createObjectURL(blob);
+        var im = new Image();
+        im.onload = function () {
+          try {
+            var c = document.createElement('canvas');
+            c.width = imgd.width; c.height = imgd.height;
+            var ctx = c.getContext('2d');
+            ctx.clearRect(0, 0, c.width, c.height);
+            ctx.drawImage(im, 0, 0, c.width, c.height);
+            var v = ctx.getImageData(0, 0, c.width, c.height).data;
+            var a = imgd.data, sum = 0, cnt = 0;
+            for (var p = 0; p < a.length; p += 4) {
+              if (a[p + 3] < 128) continue;
+              cnt++;
+              sum += Math.abs(a[p] - v[p]) + Math.abs(a[p + 1] - v[p + 1]) + Math.abs(a[p + 2] - v[p + 2]);
+            }
+            URL.revokeObjectURL(url);
+            resolve(cnt ? Math.max(0, Math.round(100 - (sum / cnt / 3) / 255 * 100)) : null);
+          } catch (e) { URL.revokeObjectURL(url); resolve(null); }
+        };
+        im.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
+        im.src = url;
+      } catch (e) { resolve(null); }
+    });
+  }
+
   function countStats(svg) {
     var objects = (svg.match(/<path/g) || []).length;
     var fills = {};
@@ -319,14 +409,23 @@
     setStatus('Memproses... mohon tunggu.', '');
     setTimeout(function () {
       try {
-        var imgd = prepare(getImageData(srcImg, parseInt(sizeSelect.value, 10)), mode === 'bw');
-        fullSvg = IT.imagedataToSVG(imgd, buildOptions());
+        var base = getImageData(srcImg, parseInt(sizeSelect.value, 10));
+        if (mode === 'dual') {
+          fullSvg = traceDual(base);
+          lastImgd = prepare(cloneImgd(base), false);
+        } else {
+          fullSvg = IT.imagedataToSVG(prepare(cloneImgd(base), mode === 'bw'), buildOptions());
+          lastImgd = prepare(cloneImgd(base), mode === 'bw');
+        }
         layers = parseLayers(fullSvg);
         selected = {};
         layers.forEach(function (l) { selected[l.index] = true; });
         renderLayers();
         applyLayerFilter();
         view = 'split'; applyView();
+        fidelity(fullSvg, lastImgd).then(function (score) {
+          if (score !== null) stFid.textContent = score + '%';
+        });
       } catch (err) {
         fullSvg = null; svgText = null; layers = []; renderLayers();
         setReady(false);

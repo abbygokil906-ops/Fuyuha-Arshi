@@ -23,7 +23,7 @@
     .drop:hover, .drop.over { border-color: var(--accent); color: var(--text); }
     .drop strong { display: block; color: var(--text); margin-bottom: 4px; }
     input[type="file"] { display: none; }
-    .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #0c0f15; padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
+    .seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; background: #0c0f15; padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
     .seg button { margin: 0; padding: 9px; background: transparent; color: var(--muted); font-weight: 600; font-size: 0.88rem; border-radius: 8px; }
     .seg button.on { background: var(--panel); color: var(--accent); border: 1px solid rgba(58,209,196,0.35); }
     .slider { margin-top: 14px; }
@@ -48,7 +48,7 @@
     .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .badge { font-size: 0.72rem; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
     .badge.ok { color: var(--ok); border-color: rgba(111,227,154,.4); }
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 12px; }
     .stat { background: #0c0f15; border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
     .stat b { display: block; font-size: 1.1rem; }
     .stat span { font-size: 0.72rem; color: var(--muted); }
@@ -98,6 +98,7 @@
     <div class="seg" id="modeSeg">
       <button type="button" class="on" data-mode="color">Warna</button>
       <button type="button" data-mode="bw">Hitam &amp; Putih</button>
+      <button type="button" data-mode="dual">Dual Engine</button>
     </div>
 
     <h2 style="margin-top:18px">03 · Engine</h2>
@@ -109,19 +110,19 @@
 
     <h2 style="margin-top:18px">04 · Pengaturan</h2>
     <div class="slider">
-      <div class="top"><span>Detail warna</span><strong id="colorsVal">8</strong></div>
+      <div class="top"><span>Detail warna</span><strong id="colorsVal">12</strong></div>
       <small>Makin tinggi, makin banyak warna. Tidak berlaku di mode hitam &amp; putih.</small>
-      <input type="range" id="colorsRange" min="2" max="16" step="1" value="8" />
+      <input type="range" id="colorsRange" min="2" max="16" step="1" value="12" />
     </div>
     <div class="slider">
-      <div class="top"><span>Kehalusan</span><strong id="smoothVal">1</strong></div>
+      <div class="top"><span>Kehalusan</span><strong id="smoothVal">0</strong></div>
       <small>Blur sebelum tracing. 0 = tepi tajam, 5 = sangat halus.</small>
-      <input type="range" id="smoothRange" min="0" max="5" step="1" value="1" />
+      <input type="range" id="smoothRange" min="0" max="5" step="1" value="0" />
     </div>
     <div class="slider">
-      <div class="top"><span>Noise removal</span><strong id="noiseVal">12</strong></div>
+      <div class="top"><span>Noise removal</span><strong id="noiseVal">4</strong></div>
       <small>Buang bintik kecil. Makin tinggi, makin bersih.</small>
-      <input type="range" id="noiseRange" min="0" max="50" step="1" value="12" />
+      <input type="range" id="noiseRange" min="0" max="50" step="1" value="4" />
     </div>
 
     <div class="slider" id="lineWrap" style="display:none">
@@ -134,6 +135,12 @@
       <div class="row"><strong>Analisis otomatis</strong><button type="button" class="mini ghost" id="analyzeBtn" disabled>Analisis</button></div>
       <p id="analysisText">Pilih gambar lalu klik Analisis untuk mendapat rekomendasi setting.</p>
       <button type="button" class="mini ghost" id="applyBtn" style="width:100%;margin-top:8px" disabled>Terapkan rekomendasi</button>
+    </div>
+
+    <div class="slider" id="lineWrap" style="display:none">
+      <div class="top"><span>Kekuatan garis</span><strong id="lineVal">90</strong></div>
+      <small>Dual Engine: piksel lebih gelap dari nilai ini dianggap garis (engine Line). Makin tinggi, makin banyak garis.</small>
+      <input type="range" id="lineRange" min="30" max="160" step="5" value="90" />
     </div>
 
     <label class="field" for="sizeSelect">Ukuran proses</label>
@@ -179,6 +186,7 @@
       <div class="stat"><b id="stObj">0</b><span>objek vektor</span></div>
       <div class="stat"><b id="stCol">0</b><span>warna</span></div>
       <div class="stat"><b id="stKb">0</b><span>KB</span></div>
+      <div class="stat"><b id="stFid">-</b><span>kemiripan warna</span></div>
     </div>
     <div class="layers">
       <div class="layers-head">
