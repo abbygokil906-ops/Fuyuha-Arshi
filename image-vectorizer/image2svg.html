@@ -72,6 +72,12 @@
     .swatch { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); }
     .layer small { color: var(--muted); display: block; font-size: 0.72rem; }
     .layer input { width: 18px; height: 18px; accent-color: var(--accent); }
+    .layer-edit { display: flex; align-items: center; gap: 8px; padding: 0 12px 10px 44px; font-size: 0.76rem; color: var(--muted); flex-wrap: wrap; }
+    .layer-edit input[type="color"] { width: 30px; height: 26px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: none; cursor: pointer; }
+    .layer-edit input[type="text"] { width: 84px; padding: 5px 7px; font-size: 0.78rem; font-family: monospace; }
+    .layer-edit input[type="range"] { flex: 1; min-width: 90px; accent-color: var(--accent); }
+    .layer-edit .val { min-width: 36px; text-align: right; color: var(--text); }
+    .layer { grid-template-columns: 22px 1fr 18px !important; }
     .status { margin-top: 12px; font-size: 0.9rem; color: var(--muted); min-height: 1.3em; }
     .status.error { color: var(--bad); }
     .status.ok { color: var(--ok); }
@@ -188,6 +194,7 @@
         <div class="row" style="gap:6px">
           <button type="button" class="mini ghost" id="selAllBtn" disabled>Semua</button>
           <button type="button" class="mini ghost" id="selNoneBtn" disabled>Kosong</button>
+          <button type="button" class="mini ghost" id="resetEditBtn" disabled>Reset warna</button>
         </div>
       </div>
       <div class="layer-list" id="layerList"><div class="placeholder" style="padding:12px;font-size:0.8rem">Layer muncul setelah Trace.</div></div>

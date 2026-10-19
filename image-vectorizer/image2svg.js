@@ -20,6 +20,8 @@
   var srcUrl = null, srcImg = null, srcName = 'hasil';
   var fullSvg = null, svgText = null;      // fullSvg = hasil trace utuh, svgText = setelah filter layer
   var layers = [], selected = {};
+  var edits = {};   // edit per layer: fill asli -> { hex: '#rrggbb', alpha: 0..1 }
+  var resetEditBtn = $('resetEditBtn');
   var recommendation = null;
 
   function setStatus(msg, kind) {
@@ -300,6 +302,31 @@
     return out.sort(function (x, y) { return y.count - x.count; });
   }
 
+  // Buang komponen mask (4 arah) yang luasnya di bawah minSize piksel
+  function removeSmall(m, w, h, minSize) {
+    var n = w * h, seen = new Uint8Array(n), buf = new Int32Array(n);
+    for (var s = 0; s < n; s++) {
+      if (seen[s] || m[s * 4] !== 0) continue;
+      var head = 0, cnt = 0;
+      buf[cnt++] = s; seen[s] = 1;
+      while (head < cnt) {
+        var cur = buf[head++], x = cur % w, y = (cur - x) / w;
+        var nb = [];
+        if (x > 0) nb.push(cur - 1);
+        if (x < w - 1) nb.push(cur + 1);
+        if (y > 0) nb.push(cur - w);
+        if (y < h - 1) nb.push(cur + w);
+        for (var k = 0; k < nb.length; k++) {
+          var v = nb[k];
+          if (!seen[v] && m[v * 4] === 0) { seen[v] = 1; buf[cnt++] = v; }
+        }
+      }
+      if (cnt < minSize) {
+        for (var z = 0; z < cnt; z++) { var q = buf[z] * 4; m[q] = m[q + 1] = m[q + 2] = 255; }
+      }
+    }
+  }
+
   // Mode filter 3x3: piksel diganti label terbanyak di sekitarnya (menghapus bintik)
   function modeFilter(idx, w, h) {
     var out = new Int16Array(idx.length);
@@ -361,6 +388,7 @@
     idx = modeFilter(idx, base.width, base.height);
     var W = base.width, H = base.height;
     var noise = parseInt(noiseRange.value, 10), smooth = parseInt(smoothRange.value, 10);
+    var minSize = 4 + noise;   // area minimum (piksel) sebuah bagian agar tidak dibuang
     var out = [];
     palette.forEach(function (col, ci) {
       var mask = { width: base.width, height: base.height, data: new Uint8ClampedArray(n * 4) };
@@ -372,6 +400,9 @@
         else { m[q] = m[q + 1] = m[q + 2] = 255; }
         m[q + 3] = 255;
       }
+      removeSmall(m, W, H, minSize);
+      any = false;
+      for (var t = 0; t < n; t++) { if (m[t * 4] === 0) { any = true; break; } }
       if (!any) return;
       var svg = IT.imagedataToSVG(mask, {
         numberofcolors: 2, colorsampling: 0, colorquantcycles: 1,
@@ -468,12 +499,31 @@
     var header = /<svg\b[^>]*>/.exec(full)[0];
     var out = [header], re = /<path\b[^>]*\/>/g, m;
     while ((m = re.exec(full))) {
-      var f = /fill="([^"]*)"/.exec(m[0]);
-      if (f && keepFills.indexOf(f[1]) >= 0) out.push(m[0]);
+      var tag = m[0];
+      var f = /fill="([^"]*)"/.exec(tag);
+      if (!f || keepFills.indexOf(f[1]) < 0) continue;
+      var e = edits[f[1]];
+      if (e) {
+        tag = tag.replace(/fill="[^"]*"/, 'fill="' + e.hex + '"');
+        tag = tag.replace(/\s*fill-opacity="[^"]*"/, '');
+        tag = tag.replace(/\/>$/, ' fill-opacity="' + e.alpha.toFixed(2) + '" />');
+      }
+      out.push(tag);
     }
     out.push('</svg>');
     return out.join('\n');
   }
+
+  function rgbToHex(fill) {
+    var m = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(fill);
+    if (!m) return '#888888';
+    return '#' + [m[1], m[2], m[3]].map(function (v) {
+      var h = (+v).toString(16); return h.length < 2 ? '0' + h : h;
+    }).join('');
+  }
+
+  function currentHex(l) { return edits[l.fill] ? edits[l.fill].hex : rgbToHex(l.fill); }
+  function currentAlpha(l) { return edits[l.fill] ? edits[l.fill].alpha : 1; }
 
   function chosenFills() {
     return layers.filter(function (l) { return selected[l.index]; }).map(function (l) { return l.fill; });
@@ -484,33 +534,80 @@
     if (!layers.length) {
       layerList.innerHTML = '<div class="placeholder" style="padding:12px;font-size:0.8rem">Layer muncul setelah Trace.</div>';
       layerCount.textContent = 'Belum ada layer';
-      selAllBtn.disabled = true; selNoneBtn.disabled = true;
+      selAllBtn.disabled = true; selNoneBtn.disabled = true; resetEditBtn.disabled = true;
       return;
     }
     layers.forEach(function (l) {
+      var wrap = document.createElement('div');
+
       var row = document.createElement('label');
       row.className = 'layer';
-      var sw = document.createElement('span');
-      sw.className = 'swatch';
-      sw.style.background = l.fill.indexOf('rgb') === 0 ? l.fill : '#888';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!selected[l.index];
+      cb.addEventListener('change', function () { selected[l.index] = cb.checked; applyLayerFilter(); });
       var txt = document.createElement('span');
       txt.textContent = 'Layer ' + (l.index + 1);
       var small = document.createElement('small');
       small.textContent = l.count + ' objek · ' + (l.chars / 1024).toFixed(0) + ' KB';
       txt.appendChild(small);
-      var cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = !!selected[l.index];
-      cb.addEventListener('change', function () {
-        selected[l.index] = cb.checked;
-        applyLayerFilter();
+      var pick = document.createElement('input');
+      pick.type = 'color';
+      pick.value = currentHex(l);
+      pick.addEventListener('input', function () { setEdit(l, pick.value, null); hexIn.value = pick.value; });
+      row.appendChild(pick); row.appendChild(txt); row.appendChild(cb);
+      wrap.appendChild(row);
+
+      var ed = document.createElement('div');
+      ed.className = 'layer-edit';
+      var hexIn = document.createElement('input');
+      hexIn.type = 'text';
+      hexIn.value = currentHex(l);
+      hexIn.maxLength = 7;
+      hexIn.addEventListener('change', function () {
+        var v = hexIn.value.trim();
+        if (/^#?[0-9a-f]{6}$/i.test(v)) {
+          if (v[0] !== '#') v = '#' + v;
+          v = v.toLowerCase();
+          setEdit(l, v, null); pick.value = v;
+        } else {
+          hexIn.value = currentHex(l);
+        }
       });
-      row.appendChild(sw); row.appendChild(txt); row.appendChild(cb);
-      layerList.appendChild(row);
+      var op = document.createElement('input');
+      op.type = 'range'; op.min = '0'; op.max = '100'; op.step = '1';
+      op.value = Math.round(currentAlpha(l) * 100);
+      var opVal = document.createElement('span');
+      opVal.className = 'val';
+      opVal.textContent = op.value + '%';
+      op.addEventListener('input', function () {
+        opVal.textContent = op.value + '%';
+        setEdit(l, null, parseInt(op.value, 10) / 100);
+      });
+      ed.appendChild(document.createTextNode('Hex'));
+      ed.appendChild(hexIn);
+      ed.appendChild(document.createTextNode('Opasitas'));
+      ed.appendChild(op);
+      ed.appendChild(opVal);
+      wrap.appendChild(ed);
+      layerList.appendChild(wrap);
     });
-    selAllBtn.disabled = false; selNoneBtn.disabled = false;
+    selAllBtn.disabled = false; selNoneBtn.disabled = false; resetEditBtn.disabled = false;
     updateLayerCount();
   }
+
+  // Simpan edit warna/opasitas untuk satu layer, lalu perbarui SVG
+  function setEdit(l, hex, alpha) {
+    var cur = edits[l.fill] || { hex: currentHex(l), alpha: currentAlpha(l) };
+    edits[l.fill] = { hex: hex || cur.hex, alpha: alpha === null ? cur.alpha : alpha };
+    applyLayerFilter();
+  }
+
+  resetEditBtn.addEventListener('click', function () {
+    edits = {};
+    renderLayers();
+    applyLayerFilter();
+  });
 
   function updateLayerCount() {
     var n = layers.filter(function (l) { return selected[l.index]; }).length;
@@ -606,6 +703,7 @@
           lastImgd = prepare(cloneImgd(base), true);
         }
         layers = parseLayers(fullSvg);
+        edits = {};
         selected = {};
         layers.forEach(function (l) { selected[l.index] = true; });
         renderLayers();
